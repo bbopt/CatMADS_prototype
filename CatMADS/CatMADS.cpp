@@ -16,8 +16,8 @@
 #include "Math/RNG.hpp"
 
 // Setup variables for all problems
-std::string basePath = "/path/to/CatMADS_built_on_NOMAD/CatMADS/";  // MUST BE HARDCODED FOR PROTOTYPE IMPLEMENTATION
-std::string pythonEnv = "/path/to/python-env//bin/python"; // MUST BE HARDCODED FOR PROTOTYPE IMPLEMENTATION
+std::string basePath = "/home/edhal/CatMADS_prototype/CatMADS/";  // MUST BE HARDCODED FOR PROTOTYPE IMPLEMENTATION
+std::string pythonEnv = "/home/edhal/gp-catmads-env/bin/python"; // MUST BE HARDCODED FOR PROTOTYPE IMPLEMENTATION
 const int nbEvalsPerVariable=5; //250
 const int nbEvals = N*nbEvalsPerVariable; // N is initialized in a problem specific folder
 const int nbEvalsLHS=static_cast<int>(nbEvals*0.2); //0.2 for GPCatMADS 
