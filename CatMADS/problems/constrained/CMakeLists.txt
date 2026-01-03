@@ -1,0 +1,18 @@
+# Add problems directories
+add_subdirectory(Beale_constrained)
+add_subdirectory(Branin_constrained)
+add_subdirectory(Bukin6_constrained)
+add_subdirectory(Dembo5_constrained)
+add_subdirectory(EDV2_constrained)
+add_subdirectory(G09_constrained)
+add_subdirectory(GoldsteinPrice_constrained)
+add_subdirectory(Himmelblau_constrained)
+add_subdirectory(HS144_constrained)
+add_subdirectory(Pentagon_constrained)
+add_subdirectory(PressureVessel_constrained)
+add_subdirectory(ReinforcedConcreteBeam_constrained)
+add_subdirectory(Rosenbrock_constrained)
+add_subdirectory(StyblinskiTang_constrained)
+add_subdirectory(Toy_constrained)
+add_subdirectory(Wong2_constrained)
+
