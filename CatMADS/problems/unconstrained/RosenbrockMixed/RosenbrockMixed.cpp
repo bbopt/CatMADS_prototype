@@ -12,8 +12,8 @@
 #include "Util/AllStopReasons.hpp"
 #include "Math/MatrixUtils.hpp"
 #include "Math/RNG.hpp"
-#include "../../CatMADS.hpp"
-#include "../../MyExtendedPoll/MyExtendedPollMethod2.hpp"
+#include "CatMADS.hpp"
+#include "MyExtendedPoll/MyExtendedPollMethod2.hpp"
 
 
 // Setup of the problem

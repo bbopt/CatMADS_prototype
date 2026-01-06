@@ -1,0 +1,10 @@
+add_executable(OET5.exe OET5.cpp)
+
+target_link_libraries(OET5.exe PUBLIC CatMADS_shared)
+
+# Set installation properties for the executable
+set_target_properties(OET5.exe PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}" SUFFIX "")
+
+# Install the executable to the current directory
+install(TARGETS OET5.exe
+    RUNTIME DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
