@@ -55,8 +55,109 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax; // unused (no constraints handled here)
+
+    // Expect: Ncat = 3, Nint = 2, Ncon = 4
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Extract categorical variables ----
+    // x1^{cat}, x2^{cat} encoded as 0..3 for A..D
+    // x3^{cat} encoded as 0..4 for A..E
+    const int x_cat1 = static_cast<int>(x[0].todouble());
+    const int x_cat2 = static_cast<int>(x[1].todouble());
+    const int x_cat3 = static_cast<int>(x[2].todouble());
+
+    // ---- Extract integer variables ----
+    const int x_int1 = static_cast<int>(x[3].todouble()); // x1^{integer}
+    const int x_int2 = static_cast<int>(x[4].todouble()); // x2^{integer}
+
+    // ---- Extract continuous variables ----
+    std::vector<double> xc(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+    {
+        xc[i] = x[Ncat + Nint + i].todouble(); // starts at index 5
+    }
+
+    const double x1 = xc[0];
+    const double x2 = xc[1];
+    const double x3 = xc[2];
+    const double x4 = xc[3];
+
+    // ---- s1(x1^{cat}, x2^{cat}) from Table (rows = x2^{cat}, cols = x1^{cat}) ----
+    static const double s1_table[4][4] = {
+        /* x2=A */ {0.80, 1.10, 0.95, 1.20},
+        /* x2=B */ {1.05, 0.85, 1.25, 0.90},
+        /* x2=C */ {0.92, 1.18, 1.00, 0.88},
+        /* x2=D */ {1.15, 0.98, 0.87, 1.30}};
+
+    const double s1 = s1_table[x_cat2][x_cat1];
+
+    // ---- Integer scaling factor ----
+    const double scale = 1.0
+                       + 0.03 * (static_cast<double>(x_int1) - 5.0)
+                       + 0.02 * (static_cast<double>(x_int2) - 4.0);
+
+    // ---- Six-hump camel-like bracket ----
+    // [ (4 - 2.1 x1^2 + (1/3) x1^4) x1^2 + x1 x2 + (-4 + 4 x2^2) x2^2 ]
+    const double x1_2 = x1 * x1;
+    const double x1_4 = x1_2 * x1_2;
+    const double x2_2 = x2 * x2;
+
+    const double camel =
+        (4.0 - 2.1 * x1_2 + (1.0 / 3.0) * x1_4) * x1_2
+        + x1 * x2
+        + (-4.0 + 4.0 * x2_2) * x2_2;
+
+    const double term_camel = s1 * scale * camel;
+
+    // ---- Quadratic regularization term ----
+    const double term_quad = 0.2 * (x3 * x3 + (x4 - 1.0) * (x4 - 1.0));
+
+    // ---- Coupling squared term ----
+    const double coupling = (x3 * x1 + x4 * x2);
+    const double term_coupling = 0.05 * coupling * coupling;
+
+    // ---- Mixed integer-continuous interaction ----
+    const double term_mix = 0.01
+        * (static_cast<double>(x_int1) - 5.0)
+        * (static_cast<double>(x_int2) - 4.0)
+        * (x3 + x4);
+
+    // ---- s2(x3^{cat}, x3^{continuous}) ----
+    double s2 = 0.0;
+    switch (x_cat3)
+    {
+    case 0: // A
+        s2 = std::abs(x3 - 0.5) + 0.05;
+        break;
+    case 1: // B
+        s2 = 1.05 * std::abs(x3 - 0.5) + 0.05;
+        break;
+    case 2: // C
+        s2 = 0.95 * std::abs(x3 - 0.5) + 0.06;
+        break;
+    case 3: // D
+        s2 = 0.70 + 0.30 * std::exp(-0.5 * (x3 + 2.0));
+        break;
+    case 4: // E
+        s2 = 1.00 + 0.40 * std::exp(-0.8 * (x3 + 1.0));
+        break;
+    }
+
+    const double f = term_camel + term_quad + term_coupling + term_mix + 0.1 * s2;
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

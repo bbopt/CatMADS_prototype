@@ -55,8 +55,90 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax;
+
+    // Expect: Ncat = 1, Nint = 2, Ncon = 3
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Categorical variable (0..20 for "1".. "21") ----
+    const int x_cat = static_cast<int>(x[0].todouble());
+    const int k = x_cat + 1; // k in {1,...,21}
+
+    // ---- Integer variables ----
+    const int x1_int = static_cast<int>(x[1].todouble());
+    const int x2_int = static_cast<int>(x[2].todouble());
+
+    // ---- Continuous variables ----
+    const double x1 = x[3].todouble(); // x1^{continuous}
+    const double x2 = x[4].todouble(); // x2^{continuous}
+    const double x3 = x[5].todouble(); // x3^{continuous}
+
+    // ---- Compute s(x^cat, x3) ----
+    double s = 0.0;
+    const double z = (x3 + 25.0) / 50.0;
+
+    if (k >= 1 && k <= 10)
+    {
+        s = 0.1
+            + 0.02 * z
+            + 0.01 * (static_cast<double>(k) - 5.0) * z;
+    }
+    else // k in {11,...,21}
+    {
+        const double t = (x3 + 25.0) / 10.0 + 0.3 * (static_cast<double>(k) - 11.0);
+        s = 0.2 + 0.08 * t * t;
+    }
+
+    // ---- Factor A ----
+    const double abs_x1 = std::abs(x1);
+    const double abs_x2int = std::abs(static_cast<double>(x2_int));
+
+    const double prod = static_cast<double>(x2_int) * abs_x1;
+    const double sat_prod = prod / (1.0 + abs_x2int * abs_x1);
+
+    const double sqrt_s = std::sqrt(s);
+    const double sat_sqrt = sqrt_s / (1.0 + sqrt_s);
+
+    const double factorA = sat_prod - sat_sqrt;
+
+    // ---- Factor B (base + fraction + small x3-coupled texture) ----
+    const double num_inside =
+        0.5 * x1 * s * s
+        + x2 * s * static_cast<double>(x1_int);
+
+    const double den_inside =
+        x1 * s * s
+        + x2 * s * std::abs(static_cast<double>(x1_int));
+
+    const double num2 = num_inside * num_inside;
+    const double den2 = 1.0 + den_inside * den_inside;
+
+    double factorB = 0.03 + (num2 / den2);
+
+    // Extra bounded texture tied to x3 and s
+    factorB += 0.03 * (1.0 + 0.5 * std::cos(2.0 * M_PI * x3 + 0.7 * s));
+
+    // ---- Factor C ----
+    const double u = 2.0 * M_PI * x3 + 3.0 * s;
+    const double factorC = 0.15 * std::cos(u) + 1.0;
+
+    // ---- Objective ----
+    const double f = factorA * factorB * factorC;
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
+
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)
@@ -72,13 +154,19 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     std::string budgetLHsFormat = std::to_string(nbEvalsLHS) + " 0";
     allParams->setAttributeValue("LH_SEARCH", NOMAD::LHSearchType(budgetLHsFormat.c_str()));
 
-    // Bounds for all variables except the first group (categorical variable)
+    // Bounds for all variables
     auto lb = NOMAD::ArrayOfDouble(N, -25.0);
     auto ub = NOMAD::ArrayOfDouble(N,  25.0);
     // Categorical lower bounds
     lb[0] = 0; 
     // Categorical upper bounds
     ub[0] = 20; 
+    // Integer lower bounds
+    lb[Ncat+0] = -5; 
+    lb[Ncat+1] = -6; 
+    // Integer upper bounds
+    ub[Ncat+0] = 4;
+    ub[Ncat+1] = 8;  
     allParams->setAttributeValue("LOWER_BOUND", lb);
     allParams->setAttributeValue("UPPER_BOUND", ub);
     

@@ -56,9 +56,90 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
- 
-    // TODO
+    // Dimension check
+    if (x.size() != Ncat + Nint + Ncon)
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon.");
+    }
+
+    // Categorical: A..J encoded 0..9
+    std::vector<int> x_cat(Ncat);
+    for (int i = 0; i < Ncat; ++i)
+        x_cat[i] = static_cast<int>(x[i].todouble());
+
+    // Integer: none here (Nint = 0) but keep template-safe
+    std::vector<int> x_int(Nint);
+    for (int i = 0; i < Nint; ++i)
+        x_int[i] = static_cast<int>(x[Ncat + i].todouble());
+
+    // Continuous: x1^con, x2^con
+    std::vector<double> x_con(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+        x_con[i] = x[Ncat + Nint + i].todouble();
+
+    const int c = x_cat[0];      // x^cat
+    const double x1 = x_con[0];  // x1^con
+    const double x2 = x_con[1];  // x2^con
+
+    // Constants
+    const double H = 100.0;
+    const double P = 2.0;
+    const double sigma = 2.0;
+
+    // s(x^cat, x1, x2)
+    auto s_map = [&](int cat, double a, double b) -> double {
+        switch (cat)
+        {
+        case 0: // A
+            return 50.0 * (std::abs(a - 0.70) + 0.30 * std::abs(b - 0.35) - 0.25);
+        case 1: // B
+            return 50.0 * (std::pow(a - 0.80, 2.0) + 0.60 * std::abs(b - 0.40) - 0.18);
+        case 2: // C
+            return 50.0 * (std::abs(a + b - 1.15) + 0.25 * std::pow(b - 0.45, 2.0) - 0.22);
+        case 3: // D
+            return 50.0 * (std::pow(std::max(0.0, b - 0.55), 2.0) + 0.40 * std::abs(a - 0.75) - 0.20);
+        case 4: // E
+            return 50.0 * (std::abs(a * b - 0.30) + 0.15 * std::abs(a - b) - 0.15);
+        case 5: // F
+            return 50.0 * (std::pow(b - 0.25, 2.0) / std::abs(a - 0.65) - 0.10);
+        case 6: // G
+            return 50.0 * (std::pow(a - 0.85, 2.0) / std::abs(b - 0.35) - 0.10);
+        case 7: // H
+            return 50.0 * (std::abs(a - 0.90) + std::abs(b - 0.20) - 0.30);
+        case 8: // I
+            return 50.0 * (std::pow(std::max(0.0, 1.05 - a - b), 2.0) - 0.08);
+        case 9: // J
+            return 50.0 * (0.50 * std::abs(a - 0.78) + 0.50 * std::abs(b - 0.42) - 0.19);
+        default:
+            return 0.0;
+        }
+    };
+
+    const double s = s_map(c, x1, x2);
+
+    // Objective
+    const double f = (2.0 * std::sqrt(2.0) * x1 + x2) * H * (1.0 + 1e-3 * s);
+
+    // Constraints
+    const double denom = std::sqrt(2.0 * x1 * x1 + 2.0 * x1 * x2);
+
+    const double g1 = ((std::sqrt(2.0) * x1 + x2) / denom) * P - sigma + 0.002 * s;
+    const double g2 = (x2 / denom) * P - sigma + 0.0015 * std::abs(s);
+    const double g3 = (1.0 / (x1 + std::sqrt(2.0) * x2)) * P - sigma + 0.001 * (s * s);
+
+    // Set BBO output: "f g1 g2 g3"
+    std::string bbo = NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g1).tostring()
+        + " " + NOMAD::Double(g2).tostring()
+        + " " + NOMAD::Double(g3).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

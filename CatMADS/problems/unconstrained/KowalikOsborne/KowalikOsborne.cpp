@@ -55,8 +55,63 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax;
+
+    // Expect: Ncat = 2, Nint = 1, Ncon = 4
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Categorical variables (encoded as 0..9 for A..J) ----
+    const int x_cat1 = static_cast<int>(x[0].todouble()); // x1^{cat}
+    const int x_cat2 = static_cast<int>(x[1].todouble()); // x2^{cat}
+
+    // ---- Integer variable ----
+    const int x1_int = static_cast<int>(x[2].todouble());
+
+    // ---- Continuous variables (4) ----
+    const double x1 = x[3].todouble(); // x1^{con}
+    const double x2 = x[4].todouble(); // x2^{con}
+    const double x3 = x[5].todouble(); // x3^{con}
+    const double x4 = x[6].todouble(); // x4^{con}
+
+    // ---- s(x1^{cat}, x2^{cat}) table (rows = x2^{cat}, cols = x1^{cat}) ----
+    static const double s_table[10][10] = {
+        /* x2=A */ {0.783, 0.391, 0.196, 0.098, 0.049, 0.033, 0.025, 0.020, 0.016, 0.014},
+        /* x2=B */ {0.779, 0.389, 0.195, 0.097, 0.049, 0.033, 0.024, 0.020, 0.016, 0.014},
+        /* x2=C */ {0.694, 0.347, 0.174, 0.087, 0.043, 0.029, 0.022, 0.017, 0.014, 0.012},
+        /* x2=D */ {0.640, 0.320, 0.160, 0.080, 0.040, 0.027, 0.020, 0.016, 0.013, 0.011},
+        /* x2=E */ {0.338, 0.169, 0.084, 0.042, 0.021, 0.014, 0.011, 0.008, 0.007, 0.006},
+        /* x2=F */ {0.251, 0.125, 0.063, 0.031, 0.016, 0.011, 0.008, 0.006, 0.005, 0.005},
+        /* x2=G */ {0.182, 0.091, 0.046, 0.023, 0.011, 0.008, 0.006, 0.005, 0.004, 0.003},
+        /* x2=H */ {0.137, 0.068, 0.034, 0.017, 0.009, 0.006, 0.004, 0.003, 0.003, 0.002},
+        /* x2=I */ {0.129, 0.065, 0.032, 0.016, 0.008, 0.005, 0.004, 0.003, 0.003, 0.002},
+        /* x2=J */ {0.094, 0.047, 0.024, 0.012, 0.006, 0.004, 0.003, 0.002, 0.002, 0.002}
+    };
+
+    const double s = s_table[x_cat2][x_cat1];
+
+    // ---- Objective ----
+    const double s2 = s * s;
+    const double num = x1 * (s2 + x2 * s);
+    const double den = (s2 + x3 * s + x4);
+
+    const double f =
+        (num / den) - s
+        + 0.05 * std::abs(x2 - x3 + 0.1 * static_cast<double>(x1_int))
+        + 0.03 * std::abs(x1 * x4 - 0.05 * static_cast<double>(x1_int))
+        + 0.02 * std::abs(x3 + 0.02 * static_cast<double>(x1_int));
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)
@@ -94,16 +149,10 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     NOMAD::BBInputType::INTEGER,  // integer variables
     NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS};
     allParams->setAttributeValue("BB_INPUT_TYPE", bbinput);
-    allParams->setAttributeValue("LOWER_BOUND", lb);
-    allParams->setAttributeValue("UPPER_BOUND", ub);
-    
-    // Types: TODO
-    NOMAD::BBInputTypeList bbinput = {};
-    allParams->setAttributeValue("BB_INPUT_TYPE", bbinput);
 
     // Variable group: TODO
-    NOMAD::VariableGroup vg0 = {}; // categorical variables
-    NOMAD::VariableGroup vg1 = {}; // quantitative variables
+    NOMAD::VariableGroup vg0 = {0,1}; // categorical variables
+    NOMAD::VariableGroup vg1 = {2, 3,4,5,6}; // quantitative variables
     allParams->setAttributeValue("VARIABLE_GROUP", NOMAD::ListOfVariableGroup({vg0,vg1}));
     
     // Poll in two subpolls

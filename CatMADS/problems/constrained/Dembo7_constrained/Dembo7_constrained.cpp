@@ -55,9 +55,168 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
- 
-    // TODO
+    // Dimension check
+    if (x.size() != Ncat + Nint + Ncon)
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon.");
+    }
+
+    // Extract categorical variables (A..R encoded as 0..17)
+    std::vector<int> x_cat(Ncat);
+    for (int i = 0; i < Ncat; ++i)
+        x_cat[i] = static_cast<int>(x[i].todouble());
+
+    // Extract integer variables (none here, but keep template consistent)
+    std::vector<int> x_int(Nint);
+    for (int i = 0; i < Nint; ++i)
+        x_int[i] = static_cast<int>(x[Ncat + i].todouble());
+
+    // Extract continuous variables (x1..x16)
+    std::vector<double> x_con(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+        x_con[i] = x[Ncat + Nint + i].todouble();
+
+    // Unpack continuous variables (1-based in LaTeX, 0-based in code)
+    const double x1  = x_con[0];
+    const double x2  = x_con[1];
+    const double x3  = x_con[2];
+    const double x4  = x_con[3];
+    const double x5  = x_con[4];
+    const double x6  = x_con[5];
+    const double x7  = x_con[6];
+    const double x8  = x_con[7];
+    const double x9  = x_con[8];
+    const double x10 = x_con[9];
+    const double x11 = x_con[10];
+    const double x12 = x_con[11];
+    const double x13 = x_con[12];
+    const double x14 = x_con[13];
+    const double x15 = x_con[14];
+    const double x16 = x_con[15];
+
+    // Constants
+    const double a = 1.262626;
+    const double b = -1.231060;
+    const double c = 0.034750;
+    const double d = 0.009750;
+
+    // f1 part
+    const double f1 =
+        a * (x12 + x13 + x14 + x15 + x16)
+        + b * (x1 * x12 + x2 * x13 + x3 * x14 + x4 * x15 + x5 * x16);
+
+    // s(x^cat, x1..x16)
+    const int cat = x_cat[0]; // 0..17 for A..R
+
+    double s_term = 0.0;
+    switch (cat)
+    {
+        case 0: // A
+            s_term = c * x1 / x6 + 100.0 * d * x1 - d * x1 / x6 - 1.0;
+            break;
+        case 1: // B
+            s_term = c * x2 / x7 + 100.0 * d * x2 - d * x2 / x7 - 1.0;
+            break;
+        case 2: // C
+            s_term = c * x3 / x8 + 100.0 * d * x3 - d * x3 / x8 - 1.0;
+            break;
+        case 3: // D
+            s_term = c * x4 / x9 + 100.0 * d * x4 - d * x4 / x9 - 1.0;
+            break;
+        case 4: // E
+            s_term = c * x5 / x10 + 100.0 * d * x5 - d * x5 / x10 - 1.0;
+            break;
+        case 5: // F
+            s_term = c * x6 / x7
+                   + (x1 / x5) * x11 * x12
+                   - (x6 / x5) * x1 * x2
+                   - 1.0;
+            break;
+        case 6: // G
+            s_term = x7 / x8
+                   + 0.002 * (x7 - x2) * x1 * x8 * x12
+                   - 0.002 * (x7 - x2) * x5
+                   - 1.0;
+            break;
+        case 7: // H
+            s_term = x8
+                   + 0.002 * (x8 - x2) * x5 * x8
+                   + 0.002 * (x3 - x9) * x14
+                   + x9
+                   - 1.0;
+            break;
+        case 8: // I
+            s_term = (x9 / x3)
+                   + (x4 - x8) * (x15 / (x3 * x14))
+                   + 500.0 * (x10 - x9) / (x3 * x14)
+                   - 1.0;
+            break;
+        case 9: // J
+            s_term = ((x6 / x4) - 1.0) * (x16 / x15)
+                   + (x10 / x4)
+                   + 500.0 * (1.0 - (x10 / x4)) / x15
+                   - 1.0;
+            break;
+        case 10: // K
+            s_term = 0.9 / x4
+                   + 0.002 * (1.0 - (x5 / x4)) * x16
+                   - 1.0;
+            break;
+        case 11: // L
+            s_term = x11 / x12 - 1.0;
+            break;
+        case 12: // M
+            s_term = x4 / x5 - 1.0;
+            break;
+        case 13: // N
+            s_term = x3 / x4 - 1.0;
+            break;
+        case 14: // O
+            s_term = x2 / x3 - 1.0;
+            break;
+        case 15: // P
+            s_term = x1 / x2 - 1.0;
+            break;
+        case 16: // Q
+            s_term = x9 / x10 - 1.0;
+            break;
+        case 17: // R
+            s_term = x8 / x9 - 1.0;
+            break;
+        default:
+            s_term = 0.0;
+            break;
+    }
+
+    // Full objective: f = f1 + 1e3 * s_term
+    const double f = f1 + 1.0e3 * s_term;
+
+    // Constraints g_i(x) <= 0
+    const double g1 = 0.002 * (x11 - x12) - 1.0;
+    const double g2 = x4 / x5 - 1.05;
+    const double g3 = x3 / x4 - 1.05;
+    const double g4 = x8 / x9 - 1.05;
+    const double g5 = x6 / x7 - 1.10;
+    const double g6 = x13 - 0.8 * x14;
+    const double g7 = x2 + x16 - 8.0;
+
+    // Set BBO output: "f g1 g2 ... g7"
+    std::string bbo = NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g1).tostring()
+        + " " + NOMAD::Double(g2).tostring()
+        + " " + NOMAD::Double(g3).tostring()
+        + " " + NOMAD::Double(g4).tostring()
+        + " " + NOMAD::Double(g5).tostring()
+        + " " + NOMAD::Double(g6).tostring()
+        + " " + NOMAD::Double(g7).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

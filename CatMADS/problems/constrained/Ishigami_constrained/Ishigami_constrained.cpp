@@ -56,7 +56,99 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    // Assumed ordering:
+    // [cat vars][int vars][cont vars]
+    //
+    // Cat-cstrs-30:
+    //   n^cat = 2 : x1^cat, x2^cat in {A..G} (encoded 0..6)
+    //   n^int = 1 : x^int in {1..20}
+    //   n^con = 7 : x1^con..x7^con in [-1,1]
+
+    // ----------------------------
+    // Decode variables
+    // ----------------------------
+    const int c1 = static_cast<int>(x[0].todouble()); // 0..6
+    const int c2 = static_cast<int>(x[1].todouble()); // 0..6
+
+    const int xi = static_cast<int>(x[Ncat + 0].todouble()); // 1..20
+
+    const double x1 = x[Ncat + Nint + 0].todouble(); // x1^con
+    const double x2 = x[Ncat + Nint + 1].todouble(); // x2^con
+    const double x3 = x[Ncat + Nint + 2].todouble(); // x3^con
+    const double x4 = x[Ncat + Nint + 3].todouble(); // x4^con
+    const double x5 = x[Ncat + Nint + 4].todouble(); // x5^con
+    const double x6 = x[Ncat + Nint + 5].todouble(); // x6^con
+    const double x7 = x[Ncat + Nint + 6].todouble(); // x7^con
+
+    // ----------------------------
+    // Categorical mapping s(c1,c2)
+    // Table given as: rows = x2^cat (A..G), cols = x1^cat (A..G)
+    // with A->0, ..., G->6
+    // ----------------------------
+    static const double Smap[7][7] = {
+        /* x2=A */ {0.40, 0.66, 0.91, 1.06, 0.89, 0.61, 0.37},
+        /* x2=B */ {0.56, 0.81, 1.07, 1.26, 1.09, 0.78, 0.52},
+        /* x2=C */ {0.71, 0.97, 1.22, 1.43, 1.24, 0.94, 0.69},
+        /* x2=D */ {0.91, 1.17, 1.43, 1.67, 1.47, 1.14, 0.85},
+        /* x2=E */ {1.12, 1.37, 1.63, 1.92, 1.70, 1.31, 1.03},
+        /* x2=F */ {1.36, 1.61, 1.94, 2.23, 1.96, 1.57, 1.26},
+        /* x2=G */ {1.61, 1.93, 2.24, 2.53, 2.22, 1.82, 1.51}
+    };
+
+    const double s = Smap[c2][c1];
+
+    // ----------------------------
+    // Objective
+    // ----------------------------
+    const double pi = M_PI;
+
+    const double term1 =
+        (s * s) *
+        ( std::sin(pi * x1)
+          + 7.0 * std::pow(std::sin(pi * x2), 2.0)
+          + 0.1 * std::pow(pi * x3, 4.0) * std::sin(pi * x1) );
+
+    const double term2 =
+        s *
+        ( (x4 * x4 + x5 * x5 - 0.5)
+          + (static_cast<double>(xi) / 20.0) * std::sin(4.0 * (x4 + x5)) );
+
+    const double term3 =
+        0.3 *
+        ( std::pow(x6 * x6 + x7 * x7 - 1.0, 2.0)
+          + (static_cast<double>(xi) / 20.0) * std::cos(4.0 * (x6 - x7)) );
+
+    const double f = term1 + term2 + term3;
+
+    // ----------------------------
+    // Constraints
+    // ----------------------------
+    const double g1 =
+        std::pow( (x4 * x4 + x5 * x5) - (0.35 + 0.25 * s), 2.0 ) - 0.0064;
+
+    const double g2 =
+        std::pow( (x6 * x6 + x7 * x7) - (0.55 + 0.15 * s), 2.0 ) - 0.0100;
+
+    const double expr3 =
+        std::sin(pi * x1)
+        + 0.5 * std::sin(pi * x2)
+        + 0.25 * x3
+        + (static_cast<double>(xi) - 10.0) / 20.0
+        - 0.15 * s;
+
+    const double g3 = std::pow(expr3, 2.0) - 0.0064;
+
+    // Set BBO output: "f g1 g2 g3"
+    std::string bbo =
+        NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g1).tostring()
+        + " " + NOMAD::Double(g2).tostring()
+        + " " + NOMAD::Double(g3).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
 
 

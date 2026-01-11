@@ -57,9 +57,101 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
- 
-    // TODO
+    // Dimension check
+    if (x.size() != Ncat + Nint + Ncon)
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon.");
+    }
+
+    // Extract categorical variables (A,B encoded as 0,1)
+    std::vector<int> x_cat(Ncat);
+    for (int i = 0; i < Ncat; ++i)
+        x_cat[i] = static_cast<int>(x[i].todouble());
+
+    // Extract integer variables
+    std::vector<int> x_int(Nint);
+    for (int i = 0; i < Nint; ++i)
+        x_int[i] = static_cast<int>(x[Ncat + i].todouble());
+
+    // Extract continuous variables
+    std::vector<double> x_con(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+        x_con[i] = x[Ncat + Nint + i].todouble();
+
+    // Unpack variables
+    const double xc1 = x_con[0]; // x_1^continuous
+    const double xc2 = x_con[1]; // x_2^continuous
+    const int xi1 = x_int[0];    // x_1^integer
+    const int xi2 = x_int[1];    // x_2^integer
+
+    // Coefficients (i = 1..6)
+    static const double a[6] = {2.00, 3.10, 9.80, 5.00, 3.20, 1.10};
+    static const double b[6] = {1.10, 0.95, 0.85, 0.60, 0.90, 0.55};
+    static const double c[6] = {1.40, 2.60, 9.10, 4.60, 2.05, 0.90};
+    static const double d[6] = {1.80, 1.55, 1.25, 1.05, 1.08, 0.85};
+
+    // Helper: compute s_i
+    auto compute_s = [&](int i, int cat) -> double {
+        // cat: 0 -> A, 1 -> B
+        if (cat == 0)
+        {
+            return a[i] + b[i] * std::log(1.0 + xc1 * xc1 + xc2 * xc2);
+        }
+        else
+        {
+            return c[i] + d[i] * std::exp(0.02 * (xc1 - xc2));
+        }
+    };
+
+    // Compute s1..s6
+    const double s1 = compute_s(0, x_cat[0]);
+    const double s2 = compute_s(1, x_cat[1]);
+    const double s3 = compute_s(2, x_cat[2]);
+    const double s4 = compute_s(3, x_cat[3]);
+    const double s5 = compute_s(4, x_cat[4]);
+    const double s6 = compute_s(5, x_cat[5]);
+
+    // Objective
+    const double f =
+        s1 * s1 + s2 * s2 + s1 * s2 - 14.0 * s1 - 16.0 * s2
+        + std::pow(s3 - 10.0, 2.0)
+        + 4.0 * std::pow(s4 - 5.0, 2.0)
+        + std::pow(s5 - 3.0, 2.0)
+        + 2.0 * std::pow(s6 - 1.0, 2.0)
+        + 5.0 * (xc1 * xc1)
+        + 7.0 * std::pow(xc2 - 11.0, 2.0)
+        + 2.0 * std::pow(static_cast<double>(xi1) - 10.0, 2.0)
+        + std::pow(static_cast<double>(xi2) - 7.0, 2.0)
+        + 45.0;
+
+    // Constraints g_i(x) <= 0
+    const double g1 = -105.0 + 4.0 * s1 + 5.0 * s2 - 3.0 * xc1 + 9.0 * xc2;
+    const double g2 =  10.0 * s1 - 8.0 * s2 - 17.0 * xc1 + 2.0 * xc2;
+    const double g3 =  -8.0 * s1 + 2.0 * s2 + 5.0 * xc1 - 2.0 * (xc2 * xc2) - 12.0;
+    const double g4 =  3.0 * std::pow(s1 - 2.0, 2.0) + 4.0 * std::pow(s2 - 3.0, 2.0) + 2.0 * (s3 * s3) - 7.0 * s4 - 120.0;
+    const double g5 =  5.0 * (s1 * s1) + 8.0 * s2 + std::pow(s3 - 6.0, 2.0) - 2.0 * s4 - 40.0;
+    const double g6 =  (s1 * s1) + 2.0 * std::pow(s2 - 2.0, 2.0) - 2.0 * s1 * s2 + 14.0 * s5 - 6.0 * s6;
+    const double g7 =  0.5 * std::pow(s1 - 8.0, 2.0) + 2.0 * std::pow(s2 - 4.0, 2.0) + 3.0 * (s5 * s5) - s6 - 30.0;
+    const double g8 = -3.0 * s1 + 6.0 * s2 + 12.0 * std::pow(xc1 - 8.0, 2.0) - 7.0 * (xc2 * xc2);
+
+    // Set BBO output: "f g1 g2 ... g8"
+    std::string bbo = NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g1).tostring()
+        + " " + NOMAD::Double(g2).tostring()
+        + " " + NOMAD::Double(g3).tostring()
+        + " " + NOMAD::Double(g4).tostring()
+        + " " + NOMAD::Double(g5).tostring()
+        + " " + NOMAD::Double(g6).tostring()
+        + " " + NOMAD::Double(g7).tostring()
+        + " " + NOMAD::Double(g8).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

@@ -25,3 +25,6 @@ if(OpenMP_CXX_FOUND)
 else()
     target_link_libraries(CatMADS_shared PUBLIC nomadAlgos nomadUtils nomadEval)
 endif()
+
+
+add_subdirectory(problems)

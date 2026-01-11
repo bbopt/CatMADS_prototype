@@ -55,8 +55,96 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax;
+
+    // Expect: Ncat = 1, Nint = 3, Ncon = 5
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Categorical variable (encoded as 0..9 for A..J) ----
+    const int x_cat = static_cast<int>(x[0].todouble());
+
+    // ---- Integer variables (3) ----
+    const int x1_int = static_cast<int>(x[1].todouble());
+    const int x2_int = static_cast<int>(x[2].todouble());
+    // x3_int exists but is not used in the formula as given
+    (void)static_cast<int>(x[3].todouble());
+
+    // ---- Continuous variables (5) ----
+    const double x1 = x[4].todouble();
+    const double x2 = x[5].todouble();
+    const double x3 = x[6].todouble();
+    const double x4 = x[7].todouble();
+    const double x5 = x[8].todouble();
+
+    // ---- delta = round((x1_int + x2_int)/10) in {-2,-1,0,1,2} ----
+    const double ratio = (static_cast<double>(x1_int) + static_cast<double>(x2_int)) / 10.0;
+    const int delta = static_cast<int>(std::round(ratio));
+
+    // ---- b(x^cat) ----
+    double b = 0.0;
+    switch (x_cat)
+    {
+    case 0: b = 0.6; break; // A
+    case 1: b = 1.1; break; // B
+    case 2: b = 2.7; break; // C
+    case 3: b = 3.5; break; // D
+    case 4: b = 4.3; break; // E
+    case 5: b = 4.0; break; // F
+    case 6: b = 3.4; break; // G
+    case 7: b = 2.3; break; // H
+    case 8: b = 1.0; break; // I
+    case 9: b = 0.4; break; // J
+    default: b = 0.0; break;
+    }
+
+    // u = b(x^cat) + delta
+    const double u = b + static_cast<double>(delta);
+
+    const double pi = M_PI;
+    double f = 0.0;
+
+    // ---- Piecewise objective by category group ----
+    if (x_cat >= 0 && x_cat <= 3) // {A,B,C,D}
+    {
+        const double termA = (x1 + 0.01 * std::pow(x1 - 0.5, 2.0));
+        const double termB = (u / 10.0);
+        const double termC = (1.0 + 0.1 * x2 + 0.05 * x3);
+        const double termD = 0.02 * (x4 * x4 + x5 * x5);
+
+        f = termA * termB * termC + termD;
+    }
+    else if (x_cat >= 4 && x_cat <= 6) // {E,F,G}
+    {
+        const double shift = (u - 4.0) / 20.0;
+        const double c = std::cos(2.0 * pi * (x1 + shift));
+
+        f =
+            0.9 * c * std::exp(-x1) * (1.0 + 0.1 * x2)
+            + 0.03 * x3
+            + 0.02 * (x4 * x4 + x5);
+    }
+    else // {H,I,J} i.e., 7..9
+    {
+        const double shift = (u - 7.0) / 20.0;
+        const double c = std::cos(2.0 * pi * (x1 + shift));
+
+        f =
+            -0.7 * c * std::exp(-x1) * (1.0 + 0.1 * x2 - 0.05 * x3)
+            + 0.02 * x4 * x5;
+    }
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

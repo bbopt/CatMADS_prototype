@@ -56,9 +56,140 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
- 
-    // TODO
+    // Assumed ordering:
+    // [cat vars][int vars][cont vars]
+    //
+    // Cat-cstrs-27:
+    //   n^cat = 2 : x1^cat, x2^cat in {"1",...,"8"} (assume encoded 0..7)
+    //   n^int = 3 : x1^int, x2^int, x3^int in {-10,...,10}
+    //   n^con = 4 : x1^con,x2^con in [-4,4], x3^con,x4^con in [-2,2]
+
+    if (x.size() != Ncat + Nint + Ncon)
+        throw NOMAD::Exception(__FILE__, __LINE__, "Dimension mismatch in eval_x.");
+
+    // --- Decode categorical (0..7 assumed) ---
+    const int x1_cat = static_cast<int>(x[0].todouble()); // "1".."8" -> 0..7
+    const int x2_cat = static_cast<int>(x[1].todouble()); // "1".."8" -> 0..7
+
+    // --- Decode integers ---
+    const int x1_int = static_cast<int>(x[Ncat + 0].todouble());
+    const int x2_int = static_cast<int>(x[Ncat + 1].todouble());
+    const int x3_int = static_cast<int>(x[Ncat + 2].todouble());
+
+    // --- Decode continuous ---
+    const double x1_con = x[Ncat + Nint + 0].todouble();
+    const double x2_con = x[Ncat + Nint + 1].todouble();
+    const double x3_con = x[Ncat + Nint + 2].todouble();
+    const double x4_con = x[Ncat + Nint + 3].todouble();
+
+    auto sign_real = [](double v) -> double
+    {
+        if (v > 0.0) return 1.0;
+        if (v < 0.0) return -1.0;
+        return 0.0;
+    };
+
+    // s1 = s(x1^cat, x1^con, x3^con)
+    auto s1_map = [&](int cat01, double z1, double z3) -> double
+    {
+        switch (cat01)
+        {
+        case 0: // "1"
+            return z1 + 0.25 * std::tanh(z1) + 0.15 * z3;
+        case 1: // "2"
+            return z1 + 0.25 * std::tanh(z1 - 0.5) + 0.12 * z3;
+        case 2: // "3"
+            return z1 + 0.25 * std::tanh(z1 + 0.5) + 0.10 * z3;
+        case 3: // "4"
+            return z1 - 0.30 * std::tanh(z1) + 0.10 * z3;
+        case 4: // "5"
+            return z1 - 0.30 * std::tanh(z1 + 0.5) + 0.08 * z3;
+        case 5: // "6"
+            return z1 - 0.30 * std::tanh(z1 - 0.5) + 0.09 * z3;
+        case 6: // "7"
+            return z1 + 0.18 * std::pow(std::abs(z1), 1.3) - 0.10 * z3;
+        case 7: // "8"
+            return z1 + 0.18 * std::pow(std::abs(z1 + 0.3), 1.3) - 0.12 * z3;
+        default:
+            return 0.0;
+        }
+    };
+
+    // s2 = s(x2^cat, x2^con, x4^con)
+    auto s2_map = [&](int cat01, double z2, double z4) -> double
+    {
+        switch (cat01)
+        {
+        case 0: // "1"
+            return z2 + 0.35 * std::atan(z2) + 0.20 * z4;
+        case 1: // "2"
+            return z2 + 0.35 * std::atan(z2 - 0.6) + 0.18 * z4;
+        case 2: // "3"
+            return z2 + 0.35 * std::atan(z2 + 0.6) + 0.16 * z4;
+        case 3: // "4"
+            return z2 + 0.22 * sign_real(z2) * std::sqrt(std::abs(z2)) - 0.12 * z4;
+        case 4: // "5"
+            return z2 + 0.22 * sign_real(z2) * std::sqrt(std::abs(z2 + 0.4)) - 0.10 * z4;
+        case 5: // "6"
+            return z2 + 0.22 * sign_real(z2) * std::sqrt(std::abs(z2 - 0.4)) - 0.11 * z4;
+        case 6: // "7"
+            return z2 - 0.28 * std::log(1.0 + z2 * z2) + 0.15 * z4;
+        case 7: // "8"
+            return z2 - 0.28 * std::log(1.0 + (z2 - 0.4) * (z2 - 0.4)) + 0.13 * z4;
+        default:
+            return 0.0;
+        }
+    };
+
+    const double s1 = s1_map(x1_cat, x1_con, x3_con);
+    const double s2 = s2_map(x2_cat, x2_con, x4_con);
+
+    // --- Objective ---
+    const double f =
+        std::sin(s1 + s2)
+        + std::pow(s1 - s2, 2.0)
+        - 1.5 * s1 + 2.5 * s2 + 1.0
+        + 0.06 * std::abs(s1 + static_cast<double>(x1_int) / 10.0)
+        + 0.04 * std::abs(s2 - static_cast<double>(x2_int) / 10.0)
+        + 0.03 * std::abs(s1 - s2 + static_cast<double>(x3_int) / 10.0);
+
+    // --- Constraints ---
+    const double g1 =
+        std::pow(s1 - 0.80, 2.0) / 0.55
+        + std::pow(s2 - 0.55, 2.0) / 0.60
+        + std::pow(x3_con - 0.40, 2.0) / 0.90
+        + std::pow(static_cast<double>(x1_int) - 4.0, 2.0) / 36.0
+        - 1.0;
+
+    const double g2 =
+        std::abs(std::sin(s1 + s2 - 0.35))
+        + std::abs(static_cast<double>(x2_int) + 2.0) / 20.0
+        + 0.30 * std::max(0.0, std::abs(s2 - s1) - 0.35)
+        - 0.80;
+
+    const double logistic =
+        1.0 / (1.0 + std::exp(-1.1 * (x2_con - x1_con - 0.4)));
+
+    const double g3 =
+        std::pow(logistic - 0.60, 2.0)
+        + std::pow((x4_con + 0.6) / 1.8, 2.0)
+        + std::abs(static_cast<double>(x3_int) - 1.0) / 25.0
+        + 0.10 / (1.0 + std::abs(s1))
+        + 0.08 / (1.0 + std::abs(s2))
+        - 0.22;
+
+    // Set BBO output: "f g1 g2 g3"
+    std::string bbo = NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g1).tostring()
+        + " " + NOMAD::Double(g2).tostring()
+        + " " + NOMAD::Double(g3).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

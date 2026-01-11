@@ -55,8 +55,88 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax; // unused (no constraints handled here)
+
+    // Expect: Ncat = 2, Nint = 1, Ncon = 7
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Extract categorical variables (encoded as 0..6 for A..G) ----
+    const int x_cat1 = static_cast<int>(x[0].todouble()); // x1^{cat}
+    const int x_cat2 = static_cast<int>(x[1].todouble()); // x2^{cat}
+
+    // ---- Extract integer variable (x^{integer} in {1,...,20}) ----
+    const int x_int = static_cast<int>(x[2].todouble());
+
+    // ---- Extract continuous variables (7 variables) ----
+    std::vector<double> xc(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+    {
+        xc[i] = x[Ncat + Nint + i].todouble(); // starts at index 3
+    }
+
+    // ---- s(x1^{cat}, x2^{cat}) from Table (rows = x2^{cat}, cols = x1^{cat}) ----
+    static const double s_table[7][7] = {
+        /* x2=A */ {0.40, 0.66, 0.91, 1.06, 0.89, 0.61, 0.37},
+        /* x2=B */ {0.56, 0.81, 1.07, 1.26, 1.09, 0.78, 0.52},
+        /* x2=C */ {0.71, 0.97, 1.22, 1.43, 1.24, 0.94, 0.69},
+        /* x2=D */ {0.91, 1.17, 1.43, 1.67, 1.47, 1.14, 0.85},
+        /* x2=E */ {1.12, 1.37, 1.63, 1.92, 1.70, 1.31, 1.03},
+        /* x2=F */ {1.36, 1.61, 1.94, 2.23, 1.96, 1.57, 1.26},
+        /* x2=G */ {1.61, 1.93, 2.24, 2.53, 2.22, 1.82, 1.51}};
+
+    const double s = s_table[x_cat2][x_cat1];
+
+    // ---- Compute objective ----
+    const double pi = M_PI;
+
+    const double x1 = xc[0];
+    const double x2 = xc[1];
+    const double x3 = xc[2];
+    const double x4 = xc[3];
+    const double x5 = xc[4];
+    const double x6 = xc[5];
+    const double x7 = xc[6];
+
+    // Term 1
+    const double sin_pi_x1 = std::sin(pi * x1);
+    const double sin_pi_x2 = std::sin(pi * x2);
+
+    double bracket1 = 0.0;
+    bracket1 += sin_pi_x1;
+    bracket1 += 7.0 * std::pow(sin_pi_x2, 2);
+    bracket1 += 0.1 * std::pow(pi * x3, 4) * sin_pi_x1;
+
+    const double term1 = (s * s) * bracket1;
+
+    // Term 2
+    const double bracket2 =
+        (x4 * x4 + x5 * x5 - 0.5) +
+        (static_cast<double>(x_int) / 20.0) * std::sin(4.0 * (x4 + x5));
+
+    const double term2 = s * bracket2;
+
+    // Term 3
+    const double bracket3 =
+        std::pow((x6 * x6 + x7 * x7 - 1.0), 2) +
+        (static_cast<double>(x_int) / 20.0) * std::cos(4.0 * (x6 - x7));
+
+    const double term3 = 0.3 * bracket3;
+
+    const double f = term1 + term2 + term3;
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

@@ -17,11 +17,11 @@
 
 
 // Setup of the problem
-const int Ncat=0;
+const int Ncat=1;
 const int Nint=0;
-const int Ncon=0;
+const int Ncon=6;
 const int N=Ncat+Nint+Ncon;
-const int Lcat=0;
+const int Lcat=51;
 const NOMAD::BBOutputTypeList bbOutputTypeListSetup = {NOMAD::BBOutputType::OBJ};
 const bool IsConstrained = false;
 
@@ -55,8 +55,81 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax; // unused (no constraints handled here)
+
+    // Expect: Ncat = 1, Nint = 0, Ncon = 6
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Extract categorical variable (encoded as 0..50 for "1".. "51") ----
+    // code 0 -> "1", code 50 -> "51"
+    const int x_cat = static_cast<int>(x[0].todouble());
+    const int i = x_cat + 1; // i in {1,...,51}
+
+    // ---- Compute s(x^{cat}) ----
+    double s = 0.0;
+    if (i % 2 == 1) // odd
+    {
+        s = 0.12 * (static_cast<double>(i) - 1.0) + 0.20;
+    }
+    else // even
+    {
+        s = -0.09 * (static_cast<double>(i) - 1.0) + 0.50;
+    }
+
+    // ---- Extract continuous variables (6 variables) ----
+    std::vector<double> xc(Ncon);
+    for (int k = 0; k < Ncon; ++k)
+    {
+        xc[k] = x[Ncat + Nint + k].todouble(); // starts at index 1
+    }
+
+    const double x1 = xc[0];
+    const double x2 = xc[1];
+    const double x3 = xc[2];
+    const double x4 = xc[3];
+    const double x5 = xc[4];
+    const double x6 = xc[5];
+
+    // ---- Build pieces ----
+    const double abs_s = std::abs(s);
+
+    const double t = std::abs(x3 * s + x4);
+    const double frac_t = t / (1.0 + t); // in [0,1)
+
+    const double denom = 1.0 + std::pow(x2 * s, 2);
+
+    // ---- Objective ----
+    const double term1 = (1.0 + 0.15 * s) * (x1 * x1);
+    const double term2 = (1.0 + 0.10 * abs_s) * (x5 * x5);
+
+    const double inner = 1.0 - 0.25 * frac_t; // in (0.75, 1]
+    const double gain  =
+        (2.0 - 0.25 * s) *
+        (x1 / denom) *
+        inner;
+
+    const double term3 = -gain;
+
+    const double term4 =
+        -0.6 * (1.0 + 0.08 * s * s) *
+        std::cos(0.6 * x6 + 1.1 * s);
+
+    const double term5 = 0.02 * s * x2 * x6;
+
+    const double f = term1 + term2 + term3 + term4 + term5;
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)
@@ -73,19 +146,27 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     allParams->setAttributeValue("LH_SEARCH", NOMAD::LHSearchType(budgetLHsFormat.c_str()));
 
     // Bounds for all variables except the first group (categorical variable)
-    auto lb = NOMAD::ArrayOfDouble(N, 0.0);
-    auto ub = NOMAD::ArrayOfDouble(N, 0.0);
-    // TODO: established bounds here
+    auto lb = NOMAD::ArrayOfDouble(N, -10.0);
+    auto ub = NOMAD::ArrayOfDouble(N,  10.0);
+        // Categorical lower bounds
+    lb[0] = 0; 
+    // Categorical upper bounds
+    ub[0] = 50; 
     allParams->setAttributeValue("LOWER_BOUND", lb);
     allParams->setAttributeValue("UPPER_BOUND", ub);
+
     
-    // Types: TODO
-    NOMAD::BBInputTypeList bbinput = {};
+    // Types
+    NOMAD::BBInputTypeList bbinput = {
+    NOMAD::BBInputType::INTEGER,  // categorical variables
+    NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS,
+    NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS,
+    NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS};
     allParams->setAttributeValue("BB_INPUT_TYPE", bbinput);
 
-    // Variable group: TODO
-    NOMAD::VariableGroup vg0 = {}; // categorical variables
-    NOMAD::VariableGroup vg1 = {}; // quantitative variables
+    // Variable group
+    NOMAD::VariableGroup vg0 = {0}; // categorical variables
+    NOMAD::VariableGroup vg1 = {1,2,3,4,5,6}; // quantitative variables
     allParams->setAttributeValue("VARIABLE_GROUP", NOMAD::ListOfVariableGroup({vg0,vg1}));
     
     // Poll in two subpolls

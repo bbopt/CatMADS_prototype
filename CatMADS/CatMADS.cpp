@@ -18,11 +18,12 @@
 // Setup variables for all problems
 std::string basePath = "/home/edhal/CatMADS_prototype/CatMADS/";  // MUST BE HARDCODED FOR PROTOTYPE IMPLEMENTATION
 std::string pythonEnv = "/home/edhal/gp-catmads-env/bin/python"; // MUST BE HARDCODED FOR PROTOTYPE IMPLEMENTATION
-const int nbEvalsPerVariable=5; //250
+const int nbEvalsPerVariable=250; //250
 const int nbEvals = N*nbEvalsPerVariable; // N is initialized in a problem specific folder
 const int nbEvalsLHS=static_cast<int>(nbEvals*0.2); //0.2 for GPCatMADS 
 int nbCatNeighbors = std::max(2, static_cast<int>(std::sqrt(Lcat)));
-const int seedSetup = 0; 
+const int seedSetup = 1; 
+// 0: done, 1: current
 
 
 // Paths

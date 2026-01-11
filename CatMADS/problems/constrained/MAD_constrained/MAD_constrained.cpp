@@ -55,9 +55,107 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
- 
-    // TODO
+    // Dimension check
+    if (x.size() != Ncat + Nint + Ncon)
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon.");
+    }
+
+    // Extract categorical variables (A..L encoded as 0..11)
+    std::vector<int> x_cat(Ncat);
+    for (int i = 0; i < Ncat; ++i)
+        x_cat[i] = static_cast<int>(x[i].todouble());
+
+    // Extract integer variables (none here, keep template)
+    std::vector<int> x_int(Nint);
+    for (int i = 0; i < Nint; ++i)
+        x_int[i] = static_cast<int>(x[Ncat + i].todouble());
+
+    // Extract continuous variables (x1, x2)
+    std::vector<double> x_con(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+        x_con[i] = x[Ncat + Nint + i].todouble();
+
+    const double x1 = x_con[0];
+    const double x2 = x_con[1];
+
+    const int cat = x_cat[0]; // 0..11 for A..L
+
+    // Objective f (piecewise by category)
+    double f = 0.0;
+    switch (cat)
+    {
+        case 0: // A
+            f = x1 * x1 + x2 * x2 + x1 * x2 - 1.0;
+            break;
+        case 1: // B
+            f = std::sin(x1) + 0.05 * std::abs(x2);
+            break;
+        case 2: // C
+            f = -std::cos(x2) + 0.03 * std::abs(x1);
+            break;
+        case 3: // D
+            f = 0.95 * (x1 * x1 + x2 * x2 + x1 * x2 - 1.0) + 0.10 * (x1 - x2);
+            break;
+        case 4: // E
+            f = std::sin(x1) + 0.08 * std::pow(x1 - 1.0, 2.0);
+            break;
+        case 5: // F
+            f = -std::cos(x2) + 0.06 * std::pow(x2 - 1.0, 2.0);
+            break;
+        case 6: // G
+            f = -std::exp(x1 - x2);
+            break;
+        case 7: // H
+            f = std::sinh(x1 - 1.0) - 1.0 + 0.03 * std::abs(x2 - 1.0);
+            break;
+        case 8: // I
+            f = -std::log(x2) - 1.0 + 0.04 * std::abs(x1);
+            break;
+        case 9: // J
+            f = -0.92 * std::exp(x1 - x2) - 0.05 * (x1 - x2);
+            break;
+        case 10: // K
+            f = 1.05 * (std::sinh(x1 - 1.0) - 1.0) + 0.02 * std::pow(x1 - 1.0, 2.0);
+            break;
+        case 11: // L
+            f = -std::log(x2) - 1.0 + 0.06 * std::pow(x2 - 0.5, 2.0);
+            break;
+        default:
+            f = 0.0;
+            break;
+    }
+
+    // Constraint g(x) (piecewise by category groups), always g <= 0
+    double g = 0.0;
+    if (cat >= 0 && cat <= 2) // {A,B,C}
+    {
+        g = 0.5 - (x1 * x1 + x2 * x2);
+    }
+    else if (cat >= 3 && cat <= 5) // {D,E,F}
+    {
+        g = 3.0 * x1 + x2 + 2.5;
+    }
+    else if (cat >= 6 && cat <= 8) // {G,H,I}
+    {
+        g = x2 - 0.05 * x1 - 0.5;
+    }
+    else // {J,K,L}
+    {
+        g = 0.9 * x1 - x2 + 1.0;
+    }
+
+    // Set BBO output: "f g"
+    std::string bbo = NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

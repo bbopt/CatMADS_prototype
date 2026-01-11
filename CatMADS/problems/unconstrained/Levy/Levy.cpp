@@ -55,8 +55,123 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax; // unused (no constraints handled here)
+
+    // Expect: Ncat = 2, Nint = 0, Ncon = n^{continuous}
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Extract categorical variables (encoded as 0..7 for A..H) ----
+    const int x_cat1 = static_cast<int>(x[0].todouble()); // x1^{cat}
+    const int x_cat2 = static_cast<int>(x[1].todouble()); // x2^{cat}
+
+    // ---- Extract continuous variables (Ncon variables) ----
+    std::vector<double> xcon(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+    {
+        xcon[i] = x[Ncat + Nint + i].todouble(); // starts at index 2
+    }
+
+    // ---- Build y_i = 1 + (x_i - 1)/4 = 0.75 + 0.25*x_i ----
+    std::vector<double> y(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+    {
+        y[i] = 1.0 + (xcon[i] - 1.0) / 4.0;
+    }
+
+    const double pi = M_PI;
+
+    // ---- s1(x_cat1, y1) ----
+    const double y1 = y[0];
+    double s1 = 0.0;
+    switch (x_cat1)
+    {
+    case 0: // A
+        s1 = y1 * y1 + 0.10;
+        break;
+    case 1: // B
+        s1 = (y1 - 0.25) * (y1 - 0.25) + 0.33;
+        break;
+    case 2: // C
+        s1 = (y1 - 0.50) * (y1 - 0.50) + 0.20;
+        break;
+    case 3: // D
+        s1 = 0.8 * (y1 - 0.75) * (y1 - 0.75) + 0.25;
+        break;
+    case 4: // E
+        s1 = 1.2 * (y1 - 1.00) * (y1 - 1.00) + 0.15;
+        break;
+    case 5: // F
+        s1 = (y1 - 1.25) * (y1 - 1.25) + 0.40;
+        break;
+    case 6: // G
+        s1 = 0.9 * (y1 - 1.50) * (y1 - 1.50) + 0.30;
+        break;
+    case 7: // H
+        s1 = 1.1 * (y1 - 0.00) * (y1 - 0.00) + 0.05;
+        break;
+    }
+
+    // ---- s2(x_cat2, yN) ----
+    const double yN = y[Ncon - 1];
+    double s2 = 0.0;
+    switch (x_cat2)
+    {
+    case 0: // A
+        s2 = (yN - 1.0) * (yN - 1.0);
+        break;
+    case 1: // B
+        s2 = 0.8 * (yN - 1.0) * (yN - 1.0) + 0.05;
+        break;
+    case 2: // C
+        s2 = 1.1 * (yN - 1.05) * (yN - 1.05) + 0.08;
+        break;
+    case 3: // D
+        s2 = 0.9 * (yN - 0.95) * (yN - 0.95) + 0.10;
+        break;
+    case 4: // E
+        s2 = -std::exp(-(yN - 0.5) * (yN - 0.5)) + 1.10;
+        break;
+    case 5: // F
+        s2 = -0.9 * std::exp(-(yN - 0.7) * (yN - 0.7)) + 1.05;
+        break;
+    case 6: // G
+        s2 = -1.1 * std::exp(-(yN - 0.3) * (yN - 0.3)) + 1.15;
+        break;
+    case 7: // H
+        s2 = -std::exp(-(yN - 0.9) * (yN - 0.9)) + 1.00;
+        break;
+    }
+
+    // ---- Main sums ----
+    double sum1 = 0.0; // \sum_{i=1}^{N-1} (y_i-1)^2 [1 + 0.5 sin^2(pi y_{i+1})]
+    double sum2 = 0.0; // 0.1 \sum_{i=1}^{N-1} (y_i-1)(y_{i+1}+2)^3  (we'll multiply by 0.1 after)
+
+    for (int i = 0; i < Ncon - 1; ++i)
+    {
+        const double yi = y[i];
+        const double yip1 = y[i + 1];
+
+        const double t = (yi - 1.0);
+        const double sin_term = std::sin(pi * yip1);
+        sum1 += (t * t) * (1.0 + 0.5 * sin_term * sin_term);
+
+        sum2 += (yi - 1.0) * std::pow((yip1 + 2.0), 3);
+    }
+
+    const double f = s1 + sum1 + s2 + 0.1 * sum2;
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

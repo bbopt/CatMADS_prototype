@@ -9,7 +9,9 @@ root_dir = os.path.dirname(os.path.dirname(current_file))
 
 build_dir = os.path.join(root_dir, "build")
 
-problems_build_dir = os.path.join(build_dir, "CatMADS/problems")
+#problems_build_dir = os.path.join(build_dir, "CatMADS/problems")
+problems_build_dir = os.path.join(build_dir, "CatMADS/problems/unconstrained")
+
 
 # Build main NOMAD files
 def build_root_project():
@@ -66,12 +68,17 @@ def run_problem_executable(problem):
 
 if __name__ == '__main__':
 
-    problems = ["AckleyHard", "Beale", "Beale_constrained", "Branin", "Branin_constrained", "Bukin6", "Bukin6_constrained",
-    "Dembo5_constrained", "EDV2", "EDV2_constrained", "G09_constrained", "GoldsteinPrice_constrained",
-    "GoldsteinPrice1", "GoldsteinPrice2", "Himmelblau_constrained", "HS78", "HS144_constrained", "Pentagon_constrained",
-    "PressureVessel_constrained", "Rastragin", "ReinforcedConcreteBeam_constrained", "Rosenbrock_constrained",
-    "RosenbrockMixed", "RosenSuzuki", "StyblinskiTang", "StyblinskiTang_constrained", "Toy1", "Toy2",
-    "Toy_constrained", "Wong1", "Wong2_constrained", "Zakharov"]
+    #problems = ["AckleyHard", "Beale", "Beale_constrained", "Branin", "Branin_constrained", "Bukin6", "Bukin6_constrained",
+    #"Dembo5_constrained", "EDV2", "EDV2_constrained", "G09_constrained", "GoldsteinPrice_constrained",
+    #"GoldsteinPrice1", "GoldsteinPrice2", "Himmelblau_constrained", "HS78", "HS144_constrained", "Pentagon_constrained",
+    #"PressureVessel_constrained", "Rastragin", "ReinforcedConcreteBeam_constrained", "Rosenbrock_constrained",
+    #"RosenbrockMixed", "RosenSuzuki", "StyblinskiTang", "StyblinskiTang_constrained", "Toy1", "Toy2",
+    #"Toy_constrained", "Wong1", "Wong2_constrained", "Zakharov"]
+
+
+    problems = ["Camel", "EVD61", "Gamma", "Hal04", "Hartmann", "Ishigami",
+                "KowalikOsborne", "Levy", "McCormick", "OET5",
+                "Roustant", "Shekel", "ThreeHump", "Wong3"]
 
 
     # 1) Delete/clean build with 

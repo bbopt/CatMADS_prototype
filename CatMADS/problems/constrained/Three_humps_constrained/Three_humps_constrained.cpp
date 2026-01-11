@@ -57,8 +57,132 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
- 
-    // TODO
+    // Expected ordering (as in previous problems):
+    // [cat vars][int vars][cont vars]
+    //
+    // Here:
+    //   n^cat = 2 : x1^cat, x2^cat in {A..F} encoded 0..5
+    //   n^int = 2 : x1^int, x2^int in {-2,-1,0,1,2}
+    //   n^con = 2 : x1^con, x2^con in [-5,5]
+
+    if (x.size() != Ncat + Nint + Ncon)
+        throw NOMAD::Exception(__FILE__, __LINE__, "Dimension mismatch in eval_x.");
+
+    // --- Decode variables ---
+    const int x1_cat = static_cast<int>(x[0].todouble());           // 0..5
+    const int x2_cat = static_cast<int>(x[1].todouble());           // 0..5
+    const int x1_int = static_cast<int>(x[Ncat + 0].todouble());    // -2..2
+    const int x2_int = static_cast<int>(x[Ncat + 1].todouble());    // -2..2
+    const double x1_con = x[Ncat + Nint + 0].todouble();            // [-5,5]
+    const double x2_con = x[Ncat + Nint + 1].todouble();            // [-5,5]
+
+    // --- s1 = s(x1^cat, x1^con) ---
+    auto s1_map = [&](int cat, double z) -> double {
+        switch (cat)
+        {
+        case 0: // A
+            return z + 0.12 * std::pow(z - 1.0, 2.0) + 0.15 * std::abs(z);
+        case 1: // B
+            return z + 0.12 * std::pow(z - 1.0, 2.0) + 0.10 * std::abs(z - 0.5);
+        case 2: // C
+            return z + 0.12 * std::pow(z - 1.0, 2.0) + 0.08 * std::abs(z + 0.5);
+        case 3: // D
+            return z - 0.10 * std::pow(z + 1.0, 2.0) - 0.12 * std::abs(z);
+        case 4: // E
+            return z - 0.10 * std::pow(z + 1.0, 2.0) - 0.09 * std::abs(z - 0.5);
+        case 5: // F
+            return z - 0.10 * std::pow(z + 1.0, 2.0) - 0.07 * std::abs(z + 0.5);
+        default:
+            return 0.0;
+        }
+    };
+
+    // --- s2 = s(x2^cat, x2^con) ---
+    auto s2_map = [&](int cat, double z) -> double {
+        switch (cat)
+        {
+        case 0: // A
+            return 0.9 * std::exp(0.35 * z) + 0.05 * std::abs(z);
+        case 1: // B
+            return 0.6 * std::exp(0.45 * z) + 0.04 * std::abs(z);
+        case 2: // C
+            return 0.9 * std::exp(0.35 * z) + 0.06 * std::abs(z - 0.4);
+        case 3: // D
+            return 0.6 * std::exp(0.45 * z) + 0.05 * std::abs(z - 0.4);
+        case 4: // E
+            return 0.9 * std::exp(0.35 * z) + 0.06 * std::abs(z + 0.4);
+        case 5: // F
+            return 0.6 * std::exp(0.45 * z) + 0.05 * std::abs(z + 0.4);
+        default:
+            return 0.0;
+        }
+    };
+
+    const double s1 = s1_map(x1_cat, x1_con);
+    const double s2 = s2_map(x2_cat, x2_con);
+
+    // --- Objective ---
+    const double f =
+        2.0 * std::pow(s1, 2.0)
+        - 1.05 * std::pow(s1, 4.0)
+        + std::pow(s1, 6.0) / 6.0
+        + s1 * s2
+        + std::pow(s2, 2.0)
+        + 0.08 * std::abs(s1)
+        + 0.05 * std::abs(s2 - s1);
+
+    // --- Constraints ---
+    const double g1 =
+        std::pow(x1_con - 1.0, 2.0) / 0.10
+        + std::pow(x2_con + 0.6 * s2 - 0.54, 2.0) / 0.06
+        + std::pow((static_cast<double>(x1_int) + 2.0 - 2.0 * std::abs(s1)), 2.0) / 9.0
+        - 1.0;
+
+    const double g2 =
+        (s2 - s1) / 0.10
+        + std::abs(static_cast<double>(x1_int)) / 2.0
+        + std::abs(static_cast<double>(x2_int)) / 2.0
+        - 1.0;
+
+    const double g3 =
+        std::pow(s1 - 1.15, 2.0) / 0.05
+        + std::pow(s2 - 0.90, 2.0) / 0.05
+        + std::abs(static_cast<double>(x1_int + x2_int)) / 6.0
+        - 1.0;
+
+    const double sig = 1.0 / (1.0 + std::exp(-1.2 * (x1_con - x2_con)));
+    const double g4 =
+        std::pow(sig - 0.73, 2.0)
+        + std::pow(std::abs(s1) / 3.0, 2.0)
+        + std::pow(std::abs(static_cast<double>(x2_int)) / 10.0, 2.0)
+        - 0.02;
+
+    const double g5 =
+        std::abs(x1_con - x2_con / 10.0 - 1.0)
+        + 0.45 * std::abs(s2 - 0.90)
+        + 0.10 * std::abs(s1 - 1.15)
+        - 0.12;
+
+    const double g6 =
+        std::pow(x2_con - 0.40 * s1, 2.0) / 0.20
+        + std::pow(x1_con + 0.30 * s2 - 1.27, 2.0) / 0.20
+        + 0.015 * std::abs(static_cast<double>(x1_int))
+        + 0.015 * std::abs(static_cast<double>(x2_int))
+        - 1.0;
+
+    // Set BBO output: "f g1 g2 g3 g4 g5 g6"
+    std::string bbo = NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g1).tostring()
+        + " " + NOMAD::Double(g2).tostring()
+        + " " + NOMAD::Double(g3).tostring()
+        + " " + NOMAD::Double(g4).tostring()
+        + " " + NOMAD::Double(g5).tostring()
+        + " " + NOMAD::Double(g6).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
 
 

@@ -55,8 +55,124 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax;
+
+    // Expect: Ncat = 2, Nint = 3, Ncon = 4
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // Convention habituelle: (cat, int, con)
+    // Indices:
+    // [0]=x1^cat, [1]=x2^cat,
+    // [2]=x1^int, [3]=x2^int, [4]=x3^int,
+    // [5]=x1^con, [6]=x2^con, [7]=x3^con, [8]=x4^con
+
+    // ---- Categorical variables (encoded as 0..7 for A..H) ----
+    const int x1cat = static_cast<int>(x[0].todouble());
+    const int x2cat = static_cast<int>(x[1].todouble());
+
+    // ---- Integer variables ----
+    const int x1i = static_cast<int>(x[2].todouble());
+    const int x2i = static_cast<int>(x[3].todouble());
+    const int x3i = static_cast<int>(x[4].todouble());
+
+    // ---- Continuous variables ----
+    const double x1c = x[5].todouble();
+    const double x2c = x[6].todouble();
+    const double x3c = x[7].todouble();
+    const double x4c = x[8].todouble();
+
+    // ---- Helpers ----
+    auto sgn = [](double v) -> double { return (v > 0.0) - (v < 0.0); };
+
+    // ---- s1 = s(x1^cat, x1^con, x3^con) ----
+    double s1 = 0.0;
+    switch (x1cat)
+    {
+    case 0: // A
+        s1 = x1c + 0.25 * std::tanh(x1c) + 0.15 * x3c;
+        break;
+    case 1: // B
+        s1 = x1c + 0.25 * std::tanh(x1c - 0.5) + 0.12 * x3c;
+        break;
+    case 2: // C
+        s1 = x1c + 0.25 * std::tanh(x1c + 0.5) + 0.10 * x3c;
+        break;
+    case 3: // D
+        s1 = x1c - 0.30 * std::tanh(x1c) + 0.10 * x3c;
+        break;
+    case 4: // E
+        s1 = x1c - 0.30 * std::tanh(x1c + 0.5) + 0.08 * x3c;
+        break;
+    case 5: // F
+        s1 = x1c - 0.30 * std::tanh(x1c - 0.5) + 0.09 * x3c;
+        break;
+    case 6: // G
+        s1 = x1c + 0.18 * std::pow(std::abs(x1c), 1.3) - 0.10 * x3c;
+        break;
+    case 7: // H
+        s1 = x1c + 0.18 * std::pow(std::abs(x1c + 0.3), 1.3) - 0.12 * x3c;
+        break;
+    default:
+        // Shouldn't happen if bounds are correct
+        s1 = x1c;
+        break;
+    }
+
+    // ---- s2 = s(x2^cat, x2^con, x4^con) ----
+    double s2 = 0.0;
+    switch (x2cat)
+    {
+    case 0: // A
+        s2 = x2c + 0.35 * std::atan(x2c) + 0.20 * x4c;
+        break;
+    case 1: // B
+        s2 = x2c + 0.35 * std::atan(x2c - 0.6) + 0.18 * x4c;
+        break;
+    case 2: // C
+        s2 = x2c + 0.35 * std::atan(x2c + 0.6) + 0.16 * x4c;
+        break;
+    case 3: // D
+        s2 = x2c + 0.22 * sgn(x2c) * std::sqrt(std::abs(x2c)) - 0.12 * x4c;
+        break;
+    case 4: // E
+        s2 = x2c + 0.22 * sgn(x2c) * std::sqrt(std::abs(x2c + 0.4)) - 0.10 * x4c;
+        break;
+    case 5: // F
+        s2 = x2c + 0.22 * sgn(x2c) * std::sqrt(std::abs(x2c - 0.4)) - 0.11 * x4c;
+        break;
+    case 6: // G
+        s2 = x2c - 0.28 * std::log(1.0 + x2c * x2c) + 0.15 * x4c;
+        break;
+    case 7: // H
+        s2 = x2c - 0.28 * std::log(1.0 + std::pow(x2c - 0.4, 2.0)) + 0.13 * x4c;
+        break;
+    default:
+        // Shouldn't happen if bounds are correct
+        s2 = x2c;
+        break;
+    }
+
+    // ---- Objective ----
+    const double f =
+        std::sin(s1 + s2)
+        + std::pow(s1 - s2, 2.0)
+        - 1.5 * s1
+        + 2.5 * s2
+        + 1.0
+        + 0.06 * std::abs(s1 + static_cast<double>(x1i) / 10.0)
+        + 0.04 * std::abs(s2 - static_cast<double>(x2i) / 10.0)
+        + 0.03 * std::abs(s1 - s2 + static_cast<double>(x3i) / 10.0);
+
+    // ---- Return to NOMAD ----
+    x.setBBO(NOMAD::Double(f).tostring());
+    countEval = true;
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)
@@ -97,8 +213,8 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     // Integer upper bounds
     ub[Ncat+Nint+0] = 4;
     ub[Ncat+Nint+1] = 4;
+    ub[Ncat+Nint+2] = 2;
     ub[Ncat+Nint+3] = 2;
-    ub[Ncat+Nint+4] = 2;
     allParams->setAttributeValue("LOWER_BOUND", lb);
     allParams->setAttributeValue("UPPER_BOUND", ub);
     

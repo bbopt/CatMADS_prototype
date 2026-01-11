@@ -55,8 +55,64 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax; // unused (no constraints handled here)
+
+    // Expect: Ncat = 1, Nint = 0, Ncon = 4
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Extract categorical variable (encoded as 0..60 for "1".. "61") ----
+    const int x_cat = static_cast<int>(x[0].todouble());
+
+    // ---- Extract continuous variables (4 variables) ----
+    std::vector<double> xc(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+    {
+        xc[i] = x[Ncat + Nint + i].todouble(); // starts at index 1
+    }
+
+    const double x1 = xc[0];
+    const double x2 = xc[1];
+    const double x3 = xc[2];
+    const double x4 = xc[3];
+
+    // ---- s(x^{cat}) lookup table for categories "1".. "61" ----
+    // Index 0 corresponds to "1", index 60 corresponds to "61".
+    static const double s_table[61] = {
+        1.00, 1.26, 1.54, 1.84, 2.16, 2.50, 2.86,
+        1.12, 1.15, 1.20, 1.25, 1.30, 1.35, 1.40,
+        3.00, 3.26, 3.54, 3.84, 4.16, 4.50, 4.86, 5.24, 5.64, 6.06, 6.50, 6.96, 7.44, 7.94,
+        6.76, 7.20, 7.66,
+        15.00, 14.85, 14.70, 14.55,
+        12.00, 11.85, 11.70, 11.55, 11.40, 11.25, 11.10, 10.95, 10.80, 10.65, 10.50, 10.35, 10.20, 10.05,
+        12.15, 11.05, 9.95, 8.85, 7.75, 6.65, 5.55, 4.45, 3.35, 2.25, 1.15, 1.00
+    };
+
+    const double s = s_table[x_cat];
+
+    // ---- Compute objective ----
+    // f = x1 * (( s + x2 + 1/(x3*s + x4) )^(s+1/2) / (s+1)^(s+1/2)) - 1
+    const double denom_inner = (x3 * s + x4);
+    const double inner = s + x2 + 1.0 / denom_inner;
+
+    const double exponent = s + 0.5;
+
+    const double num = std::pow(inner, exponent);
+    const double den = std::pow(s + 1.0, exponent);
+
+    const double f = x1 * (num / den) - 1.0;
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)
@@ -86,8 +142,9 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     NOMAD::BBInputTypeList bbinput = {
     NOMAD::BBInputType::INTEGER,  // categorical variables
     NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS};
+    allParams->setAttributeValue("BB_INPUT_TYPE", bbinput);
 
-    // Variable group: TODO
+    // Variable group
     NOMAD::VariableGroup vg0 = {0}; // categorical variables
     NOMAD::VariableGroup vg1 = {1,2,3,4}; // quantitative variables
     allParams->setAttributeValue("VARIABLE_GROUP", NOMAD::ListOfVariableGroup({vg0,vg1}));

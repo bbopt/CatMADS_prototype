@@ -57,9 +57,112 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
- 
-    // TODO
+    // Dimension check
+    if (x.size() != Ncat + Nint + Ncon)
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon.");
+    }
+
+    // Categorical (A..J encoded 0..9)
+    std::vector<int> x_cat(Ncat);
+    for (int i = 0; i < Ncat; ++i)
+        x_cat[i] = static_cast<int>(x[i].todouble());
+
+    // Integer (x1^int, x2^int)
+    std::vector<int> x_int(Nint);
+    for (int i = 0; i < Nint; ++i)
+        x_int[i] = static_cast<int>(x[Ncat + i].todouble());
+
+    // Continuous (x1..x4)
+    std::vector<double> x_con(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+        x_con[i] = x[Ncat + Nint + i].todouble();
+
+    const int c1 = x_cat[0]; // x1^cat
+    const int c2 = x_cat[1]; // x2^cat
+
+    const int i1 = x_int[0]; // x1^int
+    const int i2 = x_int[1]; // x2^int
+
+    const double xc1 = x_con[0]; // x1^con
+    const double xc2 = x_con[1]; // x2^con
+    const double xc3 = x_con[2]; // x3^con
+    const double xc4 = x_con[3]; // x4^con
+
+    // s(x1^cat, x2^cat): table is "transposed version" with rows = x2^cat, cols = x1^cat
+    static const double s_tab[10][10] = {
+        {0.40,0.44,0.50,0.60,0.74,0.86,0.92,0.84,0.70,0.54}, // row A
+        {0.62,0.70,0.80,0.94,1.12,1.28,1.36,1.22,1.02,0.78}, // row B
+        {0.82,0.94,1.08,1.26,1.50,1.70,1.78,1.58,1.30,0.98}, // row C
+        {0.98,1.12,1.30,1.54,1.84,2.05,2.08,1.84,1.50,1.12}, // row D
+        {1.08,1.26,1.48,1.76,2.12,2.28,2.20,1.94,1.58,1.18}, // row E
+        {1.02,1.18,1.38,1.62,1.96,2.14,2.16,1.90,1.54,1.14}, // row F
+        {0.90,1.02,1.18,1.38,1.66,1.82,1.90,1.74,1.42,1.06}, // row G
+        {0.74,0.84,0.96,1.12,1.34,1.46,1.56,1.50,1.24,0.94}, // row H
+        {0.56,0.62,0.70,0.82,0.98,1.06,1.14,1.12,1.00,0.78}, // row I
+        {0.36,0.40,0.46,0.54,0.66,0.72,0.78,0.80,0.72,0.56}  // row J
+    };
+    const double s = s_tab[c2][c1];
+
+    // Constants
+    const double L = 14.0;
+
+    // Helper definitions
+    const double h  = 0.18 + 0.22 * xc1 + 0.006 * (static_cast<double>(i1) + 6.0);
+    const double ell= 2.5  + 4.8  * xc2 + 0.08  * (static_cast<double>(i2) + 6.0);
+    const double t  = 5.0  + 4.5  * xc3 + 0.10  * static_cast<double>(i1);
+    const double b  = 0.20 + 0.30 * xc4;
+    const double P  = 2600.0 + 1600.0 * xc2 + 60.0 * static_cast<double>(i2);
+
+    // E(s), G(s)
+    const double E = 30.0e6 * (0.55 + 0.35 * s);
+    const double G = 12.0e6 * (0.60 + 0.30 * s);
+
+    // Stress / deflection auxiliaries
+    const double tau_p = P / (std::sqrt(2.0) * h * ell);
+    const double M     = P * (L + ell / 2.0);
+    const double R     = std::sqrt((ell * ell) / 4.0 + std::pow((h + t) / 2.0, 2.0));
+    const double J     = 2.0 * (std::sqrt(2.0) * h * ell) * ( (ell * ell) / 12.0 + std::pow(h + t, 2.0) / 4.0 );
+    const double tau_pp= (M * R) / J;
+
+    const double tau = std::sqrt(tau_p * tau_p + 2.0 * tau_p * tau_pp * (ell / (2.0 * R)) + tau_pp * tau_pp);
+
+    const double sigma = (6.0 * P * L) / (b * t * t);
+    const double delta = (4.0 * P * std::pow(L, 3.0)) / (E * b * std::pow(t, 3.0));
+
+    const double Pc =
+        (4.013 * E * std::sqrt((t * t * std::pow(b, 6.0)) / 36.0) / (L * L))
+        * (1.0 - (t / (2.0 * L)) * std::sqrt(E / (4.0 * G)));
+
+    // Objective
+    const double base_cost = 1.10471 * h * h * ell + 0.04811 * t * b * (L + ell);
+    const double f =
+        (1.35 - 0.25 * s) * base_cost
+        + 10.0 * s * std::abs((static_cast<double>(i1) - static_cast<double>(i2)) / 24.0)
+        + 0.08 * std::abs(s - 1.35);
+
+    // Constraints g_i(x) <= 0
+    const double g1 = tau   - 13600.0 * s;
+    const double g2 = sigma - 30000.0 * s;
+    const double g3 = h - b;
+    const double g4 = delta - 0.25;
+    const double g5 = P - Pc;
+
+    // Set BBO output: "f g1 g2 g3 g4 g5"
+    std::string bbo = NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g1).tostring()
+        + " " + NOMAD::Double(g2).tostring()
+        + " " + NOMAD::Double(g3).tostring()
+        + " " + NOMAD::Double(g4).tostring()
+        + " " + NOMAD::Double(g5).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

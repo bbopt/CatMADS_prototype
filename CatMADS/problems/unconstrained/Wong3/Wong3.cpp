@@ -55,8 +55,230 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax;
+
+    // Expect: Ncat = 1, Nint = 10, Ncon = 10
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Categorical variable (encoded as 0..17 for A..R) ----
+    const int x_cat = static_cast<int>(x[0].todouble());
+
+    // ---- Integer variables (10) ----
+    std::vector<int> xi(Nint);
+    for (int i = 0; i < Nint; ++i)
+    {
+        xi[i] = static_cast<int>(x[Ncat + i].todouble()); // starts at 1
+    }
+
+    // ---- Continuous variables (10) ----
+    std::vector<double> xc(Ncon);
+    for (int j = 0; j < Ncon; ++j)
+    {
+        xc[j] = x[Ncat + Nint + j].todouble(); // starts at 11
+    }
+
+    // Shorthand accessors (1-based in LaTeX)
+    auto I = [&](int idx1) -> double { return static_cast<double>(xi[idx1 - 1]); };
+    auto C = [&](int idx1) -> double { return xc[idx1 - 1]; };
+
+    // ---- g(x^int, x^con) ----
+    double g = 0.0;
+
+    g += std::abs(I(1)) + std::abs(C(1)) + I(1) * C(1) - 14.0 * I(1) - 16.0 * C(1);
+    g += std::pow(I(2) - 10.0, 2) + 4.0 * std::pow(C(2) - 5.0, 2);
+
+    g += std::abs(I(3) - 3.0) + 2.0 * std::abs(C(3) - 1.0);
+    g += 5.0 * std::pow(I(4), 2) + 7.0 * std::pow(C(4) - 11.0, 2);
+
+    g += 2.0 * std::abs(I(5) - 10.0) + std::abs(C(5) - 7.0);
+    g += std::pow(I(6) - 9.0, 2) + 10.0 * std::pow(C(6) - 1.0, 2);
+
+    g += 5.0 * std::abs(I(7) - 7.0) + 4.0 * std::abs(C(7) - 14.0);
+    g += 27.0 * std::pow(I(8) - 1.0, 2) + std::pow(C(8), 4);
+
+    g += std::abs(I(9) - 2.0) + 13.0 * std::abs(C(9) - 2.0);
+    g += std::pow(I(10) - 3.0, 2) + std::pow(C(10), 2);
+
+    g += 95.0;
+
+    // ---- s(x^cat, x^int, x^con) ----
+    double s_case = 0.0;
+
+    switch (x_cat)
+    {
+    case 0: // A
+        s_case = 0.0;
+        break;
+
+    case 1: // B
+        s_case =
+            3.0 * std::pow(I(1) - 2.0, 2)
+            + 4.0 * std::pow(C(1) - 3.0, 2)
+            + 2.0 * std::pow(I(2), 2)
+            - 7.0 * C(2)
+            - 120.0;
+        break;
+
+    case 2: // C
+        s_case =
+            5.0 * std::pow(I(1), 2)
+            + 8.0 * C(1)
+            + std::pow(I(2) - 6.0, 2)
+            - 2.0 * C(2)
+            - 40.0;
+        break;
+
+    case 3: // D
+        s_case =
+            0.5 * std::pow(I(1) - 8.0, 2)
+            + 2.0 * std::pow(C(1) - 4.0, 2)
+            + 3.0 * std::pow(I(3), 2)
+            - C(3)
+            - 30.0;
+        break;
+
+    case 4: // E
+        s_case =
+            std::pow(I(1), 2)
+            + 2.0 * std::pow(C(1) - 2.0, 2)
+            - 2.0 * I(1) * C(1)
+            + 14.0 * I(3)
+            - 6.0 * C(3);
+        break;
+
+    case 5: // F
+        s_case =
+            4.0 * std::pow(I(2), 2)
+            + 5.0 * C(2)
+            - 3.0 * I(4)
+            + 9.0 * C(4)
+            - 105.0;
+        break;
+
+    case 6: // G
+        s_case =
+            10.0 * I(1)
+            - 8.0 * C(1)
+            - 17.0 * I(4)
+            + 2.0 * C(4);
+        break;
+
+    case 7: // H
+        s_case =
+            -3.0 * I(1)
+            + 6.0 * C(1)
+            + 12.0 * std::pow(I(5) - 8.0, 2)
+            - 7.0 * C(5);
+        break;
+
+    case 8: // I
+        s_case =
+            -8.0 * I(1)
+            + 2.0 * C(1)
+            + 5.0 * I(5)
+            - 2.0 * C(5)
+            - 12.0;
+        break;
+
+    case 9: // J
+        s_case =
+            I(1)
+            + C(1)
+            + 4.0 * I(6)
+            - 21.0 * C(6);
+        break;
+
+    case 10: // K
+        s_case =
+            std::pow(I(1), 2)
+            + 5.0 * I(6)
+            - 8.0 * C(6)
+            - 28.0;
+        break;
+
+    case 11: // L
+        s_case =
+            4.0 * I(1)
+            + 9.0 * C(1)
+            + 5.0 * std::pow(I(7), 2)
+            - 9.0 * C(7)
+            - 87.0;
+        break;
+
+    case 12: // M
+        s_case =
+            3.0 * I(1)
+            + 4.0 * C(1)
+            + 3.0 * std::pow(I(7) - 6.0, 2)
+            - 14.0 * C(7)
+            - 10.0;
+        break;
+
+    case 13: // N
+        s_case =
+            14.0 * std::pow(I(1), 2)
+            + 35.0 * I(8)
+            - 79.0 * C(8)
+            - 92.0;
+        break;
+
+    case 14: // O
+        s_case =
+            15.0 * std::pow(C(1), 2)
+            + 11.0 * I(8)
+            - 61.0 * C(8)
+            - 54.0;
+        break;
+
+    case 15: // P
+        s_case =
+            5.0 * std::pow(I(1), 2)
+            + 2.0 * C(1)
+            + 9.0 * std::pow(I(9), 4)
+            - C(9)
+            - 68.0;
+        break;
+
+    case 16: // Q
+        s_case =
+            std::pow(I(1), 2)
+            - C(1)
+            + 19.0 * I(10)
+            - 20.0 * C(10)
+            + 19.0;
+        break;
+
+    case 17: // R
+        s_case =
+            7.0 * std::pow(I(1), 2)
+            + 5.0 * std::pow(C(1), 2)
+            + std::pow(I(10), 2)
+            - 30.0 * C(10);
+        break;
+
+    default:
+        // Should not happen if bounds/types are correct
+        s_case = 0.0;
+        break;
+    }
+
+    const double s = 10.0 * s_case;
+
+    // ---- Objective ----
+    const double f = g + s;
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

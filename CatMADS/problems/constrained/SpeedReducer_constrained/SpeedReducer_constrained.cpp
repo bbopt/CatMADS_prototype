@@ -58,9 +58,102 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
- 
-    // TODO
+    // Dimension check
+    if (x.size() != Ncat + Nint + Ncon)
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon.");
+    }
+
+    // Extract categorical variables (assumed encoded as 0..7 for A..H)
+    std::vector<int> x_cat(Ncat);
+    for (int i = 0; i < Ncat; ++i)
+        x_cat[i] = static_cast<int>(x[i].todouble());
+
+    // Extract integer variables (none here, but keep generic)
+    std::vector<int> x_int(Nint);
+    for (int i = 0; i < Nint; ++i)
+        x_int[i] = static_cast<int>(x[Ncat + i].todouble());
+
+    // Extract continuous variables
+    std::vector<double> x_con(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+        x_con[i] = x[Ncat + Nint + i].todouble();
+
+    // Unpack continuous vars (this problem: n_con = 6)
+    const double x1 = x_con[0];
+    const double x2 = x_con[1];
+    const double x3 = x_con[2];
+    const double x4 = x_con[3];
+    const double x5 = x_con[4];
+    const double x6 = x_con[5];
+
+    // s = s(x1^cat, x2^cat) via table (rows: x2^cat, cols: x1^cat), A..H -> 0..7
+    auto s_value = [&](int c1, int c2) -> double {
+        static const double S[8][8] = {
+            /* x2=A */ {23, 19, 27, 21, 18, 24, 20, 26},
+            /* x2=B */ {20, 25, 18, 24, 22, 19, 27, 21},
+            /* x2=C */ {26, 22, 24, 19, 27, 21, 18, 23},
+            /* x2=D */ {19, 27, 21, 23, 20, 26, 22, 18},
+            /* x2=E */ {24, 18, 23, 20, 26, 22, 19, 27},
+            /* x2=F */ {21, 23, 20, 26, 22, 18, 24, 19},
+            /* x2=G */ {17, 24, 22, 19, 27, 21, 23, 20},
+            /* x2=H */ {22, 19, 26, 22, 18, 23, 20, 25}
+        };
+        return S[c2][c1]; // row = x2^cat, col = x1^cat
+    };
+
+    const double s = s_value(x_cat[0], x_cat[1]);
+
+    // Objective
+    const double poly = 3.3333 * s * s + 14.9334 * s - 43.0934;
+
+    const double f =
+        0.7854 * x1 * (x2 * x2) * poly
+        - 1.508 * x1 * (x5 * x5 + x6 * x6)
+        + 7.477 * (std::pow(x5, 3.0) + std::pow(x6, 3.0))
+        + 0.7854 * (x3 * (x5 * x5) + x4 * (x6 * x6));
+
+    // Constraints g_i(x) <= 0
+    const double g1  = 27.0   - x1 * (x2 * x2) * s;
+    const double g2  = 397.5  - x1 * (x2 * x2) * (s * s);
+    const double g3  = 1.93 * std::pow(x3, 3.0) - x2 * s * std::pow(x5, 4.0);
+    const double g4  = 1.93 * std::pow(x4, 3.0) - x2 * s * std::pow(x6, 4.0);
+
+    const double g5  =
+        std::sqrt(std::pow(745.0 * x3, 2.0) + (16.9e6) * (x2 * x2) * (s * s))
+        - 110.0 * x2 * s * std::pow(x5, 3.0);
+
+    const double g6  =
+        std::sqrt(std::pow(745.0 * x4, 2.0) + (157.5e6) * (x2 * x2) * (s * s))
+        - 85.0 * x2 * s * std::pow(x6, 3.0);
+
+    const double g7  = x2 * s - 40.0;
+    const double g8  = 5.0 * x2 - x1;
+    const double g9  = x1 - 12.0 * x2;
+    const double g10 = 1.9 + 1.5 * x5 - x3;
+    const double g11 = 1.9 + 1.1 * x6 - x4;
+
+    // Set BBO output: "f g1 g2 ... g11"
+    std::string bbo = NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g1).tostring()
+        + " " + NOMAD::Double(g2).tostring()
+        + " " + NOMAD::Double(g3).tostring()
+        + " " + NOMAD::Double(g4).tostring()
+        + " " + NOMAD::Double(g5).tostring()
+        + " " + NOMAD::Double(g6).tostring()
+        + " " + NOMAD::Double(g7).tostring()
+        + " " + NOMAD::Double(g8).tostring()
+        + " " + NOMAD::Double(g9).tostring()
+        + " " + NOMAD::Double(g10).tostring()
+        + " " + NOMAD::Double(g11).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

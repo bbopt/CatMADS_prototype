@@ -57,9 +57,83 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
- 
-    // TODO
+    // Dimension check
+    if (x.size() != Ncat + Nint + Ncon)
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon.");
+    }
+
+    // Extract categorical variables
+    std::vector<int> x_cat(Ncat);
+    for (int i = 0; i < Ncat; ++i)
+        x_cat[i] = static_cast<int>(x[i].todouble());
+
+    // Extract integer variables
+    std::vector<int> x_int(Nint);
+    for (int i = 0; i < Nint; ++i)
+        x_int[i] = static_cast<int>(x[Ncat + i].todouble());
+
+    // Extract continuous variables
+    std::vector<double> x_con(Ncon);
+    for (int i = 0; i < Ncon; ++i)
+        x_con[i] = x[Ncat + Nint + i].todouble();
+
+    // Problem variables:
+    // Here x_5^cat is already encoded as k ∈ {1,...,50}.
+    const int k  = x_cat[0];
+    const int x3 = x_int[0];
+    const int x4 = x_int[1];
+    const double x1 = x_con[0];
+    const double x2 = x_con[1];
+
+    // s = s(x_5^cat)
+    const double s =
+        (k % 2 == 0)
+            ? (10.0 + 0.3 * k + 0.7 * std::sin(M_PI * k / 6.0))
+            : (25.0 * std::exp(-0.05 * k) + 1.5);
+
+    // Objective
+    const double f =
+        (s + 2.0) * x1 * (x2 * x2)
+        + 0.05 * x3 * (x1 * x1)
+        + 0.03 * (static_cast<double>(x4) * x4) * x2
+        + 0.01 * x3 * x4 * s;
+
+    // Constraints g_i(x) <= 0
+    const double g1 =
+        71785.0 * std::pow(x2, 4.0)
+        - std::pow(x1, 3.0) * s
+        + 500.0 * x3 * x4;
+
+    const double g2 =
+        5108.0 * (x2 * x2) * (4.0 * (x1 * x1) - x1 * x2)
+        + 12566.0 * (x1 * std::pow(x2, 3.0) - std::pow(x1, 4.0))
+        - 64187128.0 * std::pow(x2, 5.0) * (x1 - x2)
+        + 2000.0 * (static_cast<double>(x3) * x3 - x4);
+
+    const double g3 =
+        (x1 * x1) * s
+        - 140.45 * x2
+        + 10.0 * x3;
+
+    const double g4 = x1 + x2 - 1.5;
+    const double g5 = static_cast<double>(x3) + 2.0 * x4 - 15.0;
+
+    // Set BBO output: "f g1 g2 g3 g4 g5"
+    std::string bbo = NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g1).tostring()
+        + " " + NOMAD::Double(g2).tostring()
+        + " " + NOMAD::Double(g3).tostring()
+        + " " + NOMAD::Double(g4).tostring()
+        + " " + NOMAD::Double(g5).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)

@@ -57,8 +57,94 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
- 
-    // TODO
+    // Assumed ordering:
+    // [cat vars][int vars][cont vars]
+    //
+    // Cat-cstrs-28:
+    //   n^cat = 2 : x1^cat, x2^cat in {A..J} (encoded 0..9)
+    //   n^int = 2 : x1^int, x2^int in {-10,...,10}
+    //   n^con = 2 : x1^con in [13,100], x2^con in [0,100}
+
+    // --- Decode categorical (0..9) ---
+    const int c1 = static_cast<int>(x[0].todouble()); // row: x1^cat
+    const int c2 = static_cast<int>(x[1].todouble()); // col: x2^cat
+
+    // --- Decode integers ---
+    const int x1_int = static_cast<int>(x[Ncat + 0].todouble());
+    const int x2_int = static_cast<int>(x[Ncat + 1].todouble());
+
+    // --- Decode continuous ---
+    const double x1_con = x[Ncat + Nint + 0].todouble();
+    const double x2_con = x[Ncat + Nint + 1].todouble();
+
+    // s(x1^cat, x2^cat) table (rows: x1^cat=A..J, cols: x2^cat=A..J)
+    static const double S[10][10] = {
+        {11.8,12.3,12.9,13.6,14.1,14.4,14.6,14.7,14.8,14.9}, // A
+        {11.2,12.1,13.0,13.9,14.6,15.0,15.3,15.5,15.6,15.7}, // B
+        {10.8,11.8,13.2,14.6,15.5,16.0,16.4,16.7,16.9,17.0}, // C
+        {10.5,11.6,13.1,15.3,16.8,17.6,18.2,18.6,18.9,19.1}, // D
+        {10.3,11.3,12.8,15.0,17.9,19.0,19.8,20.4,20.9,21.2}, // E
+        {10.2,11.1,12.4,14.5,17.2,20.1,21.1,21.9,22.6,23.1}, // F
+        {10.1,10.9,12.0,13.8,16.3,19.3,22.0,23.0,23.8,24.4}, // G
+        {10.0,10.8,11.7,13.2,15.3,18.2,21.0,23.5,24.6,25.4}, // H
+        {10.0,10.7,11.4,12.6,14.4,16.9,19.6,22.2,24.2,25.7}, // I
+        {10.0,10.6,11.2,12.1,13.5,15.5,17.7,20.1,22.4,25.0}  // J
+    };
+
+    const double s = S[c1][c2];
+
+    // --- Objective ---
+    const double f =
+        std::pow(x1_con - 25.0, 2.0)
+        + std::pow(x2_con - 40.0, 2.0)
+        + 6.0 * std::pow(s - 18.0, 2.0)
+        + 0.20 * std::pow(static_cast<double>(x1_int), 2.0)
+        + 0.15 * std::pow(static_cast<double>(x2_int), 2.0)
+        + 0.60 * std::abs(static_cast<double>(x1_int - x2_int))
+        + 0.04 * std::abs(x2_con - 2.0 * s)
+        + 12.0;
+
+    // --- Constraints ---
+    const double g1 =
+        std::pow(x1_con - 35.0, 2.0)
+        + std::pow(x2_con - 55.0, 2.0)
+        - 900.0
+        + 20.0 * (s - 18.0)
+        + 6.0 * static_cast<double>(x1_int);
+
+    const double g2 =
+        (x1_con - 20.0) * (x2_con - 30.0)
+        - 700.0
+        + 12.0 * std::abs(s - 16.0)
+        + 2.0 * std::abs(static_cast<double>(x2_int));
+
+    const double g3 =
+        x2_con / 100.0
+        + std::abs(static_cast<double>(x1_int)) / 12.0
+        + 0.05 * (s - 10.0)
+        - 1.0;
+
+    const double g4 =
+        std::abs(x2_con - (2.0 * s + 5.0))
+        - (18.0 - 0.6 * std::abs(static_cast<double>(x2_int)));
+
+    const double g5 =
+        std::pow(static_cast<double>(x1_int + x2_int), 2.0)
+        - 60.0
+        + 4.0 * (s - 18.0);
+
+    // Set BBO output: "f g1 g2 g3 g4 g5"
+    std::string bbo = NOMAD::Double(f).tostring()
+        + " " + NOMAD::Double(g1).tostring()
+        + " " + NOMAD::Double(g2).tostring()
+        + " " + NOMAD::Double(g3).tostring()
+        + " " + NOMAD::Double(g4).tostring()
+        + " " + NOMAD::Double(g5).tostring();
+
+    x.setBBO(bbo);
+
+    countEval = true;
+    return true;
 }
 
 

@@ -55,8 +55,99 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax;
+
+    // Expect: Ncat = 2, Nint = 0, Ncon = 2
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Categorical variables (encoded as 0..5 for A..F) ----
+    const int x_cat1 = static_cast<int>(x[0].todouble()); // x1^{cat}
+    const int x_cat2 = static_cast<int>(x[1].todouble()); // x2^{cat}
+
+    // ---- Continuous variables ----
+    const double x1 = x[2].todouble(); // x1^{con}
+    const double x2 = x[3].todouble(); // x2^{con}
+
+    // ---- s1 = s(x1^{cat}, x1^{con}) ----
+    double s1 = 0.0;
+    switch (x_cat1)
+    {
+    case 0: // A
+        s1 = x1 + 0.12 * std::pow(x1 - 1.0, 2.0) + 0.15 * std::abs(x1);
+        break;
+    case 1: // B
+        s1 = x1 + 0.12 * std::pow(x1 - 1.0, 2.0) + 0.10 * std::abs(x1 - 0.5);
+        break;
+    case 2: // C
+        s1 = x1 + 0.12 * std::pow(x1 - 1.0, 2.0) + 0.08 * std::abs(x1 + 0.5);
+        break;
+    case 3: // D
+        s1 = x1 - 0.10 * std::pow(x1 + 1.0, 2.0) - 0.12 * std::abs(x1);
+        break;
+    case 4: // E
+        s1 = x1 - 0.10 * std::pow(x1 + 1.0, 2.0) - 0.09 * std::abs(x1 - 0.5);
+        break;
+    case 5: // F
+        s1 = x1 - 0.10 * std::pow(x1 + 1.0, 2.0) - 0.07 * std::abs(x1 + 0.5);
+        break;
+    default:
+        s1 = x1; // fallback (should not happen if bounds/types correct)
+        break;
+    }
+
+    // ---- s2 = s(x2^{cat}, x2^{con}) ----
+    double s2 = 0.0;
+    switch (x_cat2)
+    {
+    case 0: // A
+        s2 = 0.9 * std::exp(0.35 * x2) + 0.05 * std::abs(x2);
+        break;
+    case 1: // B
+        s2 = 0.6 * std::exp(0.45 * x2) + 0.04 * std::abs(x2);
+        break;
+    case 2: // C
+        s2 = 0.9 * std::exp(0.35 * x2) + 0.06 * std::abs(x2 - 0.4);
+        break;
+    case 3: // D
+        s2 = 0.6 * std::exp(0.45 * x2) + 0.05 * std::abs(x2 - 0.4);
+        break;
+    case 4: // E
+        s2 = 0.9 * std::exp(0.35 * x2) + 0.06 * std::abs(x2 + 0.4);
+        break;
+    case 5: // F
+        s2 = 0.6 * std::exp(0.45 * x2) + 0.05 * std::abs(x2 + 0.4);
+        break;
+    default:
+        s2 = 0.0; // fallback
+        break;
+    }
+
+    // ---- Objective ----
+    const double s1_2 = s1 * s1;
+    const double s1_4 = s1_2 * s1_2;
+    const double s1_6 = s1_4 * s1_2;
+
+    const double f =
+        2.0 * s1_2
+        - 1.05 * s1_4
+        + (s1_6 / 6.0)
+        + s1 * s2
+        + s2 * s2
+        + 0.08 * std::abs(s1)
+        + 0.05 * std::abs(s2 - s1);
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)
@@ -88,7 +179,8 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     NOMAD::BBInputTypeList bbinput = {
     NOMAD::BBInputType::INTEGER, NOMAD::BBInputType::INTEGER, // categorical variables
     NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS};
-
+    allParams->setAttributeValue("BB_INPUT_TYPE", bbinput);
+    
     // Variable group: TODO
     NOMAD::VariableGroup vg0 = {0,1}; // categorical variables
     NOMAD::VariableGroup vg1 = {2,3}; // quantitative variables

@@ -55,8 +55,66 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    // TODO
+    (void)hMax; // unused (no constraints handled here)
+
+    // Expect: Ncat = 1, Nint = 0, Ncon = 5
+    if (x.size() != (Ncat + Nint + Ncon))
+    {
+        throw NOMAD::Exception(__FILE__, __LINE__,
+                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
+    }
+
+    // ---- Extract categorical variable (integer encoding) ----
+    const int x_cat = static_cast<int>(x[0].todouble());
+
+    // ---- Extract continuous variables x1..x5 ----
+    std::vector<double> xc(Ncon);
+    for (int k = 0; k < Ncon; ++k)
+    {
+        xc[k] = x[Ncat + Nint + k].todouble(); // starts at index 1
+    }
+
+    // ---- s(x^cat) ----
+    // IMPORTANT: Replace this block with your exact s(x^cat).
+    // If you already use a table (like Cat-21), paste it here.
+    double s = 0.0;
+    {
+        // Placeholder (example only):
+        // map category code 0..(Lcat-1) to some s values.
+        // REMOVE and replace by your real definition.
+        s = 0.01 * static_cast<double>(x_cat);
+    }
+
+    // ---- Objective ----
+    const double pi = M_PI;
+    const double s2 = s * s;
+
+    double f = 0.0;
+
+    for (int i = 1; i <= 5; ++i)
+    {
+        const double xi = xc[i - 1];
+
+        const double weight = std::pow(2.0, static_cast<double>(i - 1) / 4.0);
+
+        const double term =
+            5.0 * xi
+            + 0.3 * s2 * std::pow(xi, 4)
+            + std::pow(1.0 - xi, 2)
+            + s * std::sin(3.0 * pi * xi + (static_cast<double>(i) * pi) / 5.0);
+
+        f += term * weight;
+    }
+
+    // ---- Return to NOMAD ----
+    NOMAD::Double F(f);
+    x.setBBO(F.tostring());
+    countEval = true;
+
+    return true;
 }
+
+
 
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)
@@ -72,9 +130,9 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     std::string budgetLHsFormat = std::to_string(nbEvalsLHS) + " 0";
     allParams->setAttributeValue("LH_SEARCH", NOMAD::LHSearchType(budgetLHsFormat.c_str()));
 
-    // Bounds for all variables except the first group (categorical variable)
-    auto lb = NOMAD::ArrayOfDouble(N, 0.0);
-    auto ub = NOMAD::ArrayOfDouble(N, 1.0);
+    // Bounds for all variables
+    auto lb = NOMAD::ArrayOfDouble(N, -6.0);
+    auto ub = NOMAD::ArrayOfDouble(N,  9.0);
     // Categorical lower bounds
     lb[0] = 0; 
     lb[1] = 0;
@@ -83,6 +141,18 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     ub[0] = 2; 
     ub[1] = 1;
     ub[2] = 1;
+    // Continuous lower bounds
+    lb[Ncat+0] = -9;
+    lb[Ncat+1] = -7;
+    lb[Ncat+2] = -10;
+    lb[Ncat+3] = -8;
+    lb[Ncat+4] = -6;
+    // Continuous upper bounds
+    ub[Ncat+0] = 12;
+    ub[Ncat+1] = 14;
+    ub[Ncat+2] = 10;
+    ub[Ncat+3] = 13;
+    ub[Ncat+4] = 15;
     allParams->setAttributeValue("LOWER_BOUND", lb);
     allParams->setAttributeValue("UPPER_BOUND", ub);
     
