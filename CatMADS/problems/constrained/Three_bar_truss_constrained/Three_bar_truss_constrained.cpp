@@ -124,7 +124,7 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
     // Constraints
     const double denom = std::sqrt(2.0 * x1 * x1 + 2.0 * x1 * x2);
 
-    const double g1 = ((std::sqrt(2.0) * x1 + x2) / denom) * P - sigma + 0.002 * s;
+    const double g1 = ((std::sqrt(2.0) * x1 + x2) / denom) * P - sigma + 0.002 * s - 0.04;
     const double g2 = (x2 / denom) * P - sigma + 0.0015 * std::abs(s);
     const double g3 = (1.0 / (x1 + std::sqrt(2.0) * x2)) * P - sigma + 0.001 * (s * s);
 

@@ -72,6 +72,14 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
 
     const int xi = static_cast<int>(x[Ncat + 0].todouble()); // 1..20
 
+    if (c1 < 0 || c1 > 6 || c2 < 0 || c2 > 6){
+        throw NOMAD::Exception(__FILE__, __LINE__, "Categorical index out of range 0..6.");
+    }
+
+    if (xi < 1 || xi > 20){
+        throw NOMAD::Exception(__FILE__, __LINE__, "Integer variable out of range 1..20.");
+    }
+
     const double x1 = x[Ncat + Nint + 0].todouble(); // x1^con
     const double x2 = x[Ncat + Nint + 1].todouble(); // x2^con
     const double x3 = x[Ncat + Nint + 2].todouble(); // x3^con
@@ -166,8 +174,8 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     allParams->setAttributeValue("LH_SEARCH", NOMAD::LHSearchType(budgetLHsFormat.c_str()));
 
     // Bounds for all variables except the first group (categorical variable)
-    auto lb = NOMAD::ArrayOfDouble(N, -2.0);
-    auto ub = NOMAD::ArrayOfDouble(N,  2.0);
+    auto lb = NOMAD::ArrayOfDouble(N, -1.0);
+    auto ub = NOMAD::ArrayOfDouble(N,  1.0);
     // Categorical lower bounds
     lb[0] = 0; 
     lb[1] = 0;
@@ -225,10 +233,11 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     allParams->setAttributeValue("RNG_ALT_SEEDING", true);
 
     // File history for convergence plots and profiles
-    allParams->setAttributeValue("STATS_FILE", NOMAD::ArrayOfString("ishigami.txt bbe sol obj cons_h"));
+    allParams->setAttributeValue("STATS_FILE", NOMAD::ArrayOfString("ishigami_constrained.txt bbe sol obj cons_h"));
 
     // Parameters validation
     allParams->checkAndComply();
+    
     
 }
 
@@ -307,6 +316,20 @@ int main ( int argc , char ** argv )
     // Set user extended poll method
     std::unique_ptr<NOMAD::ExtendedPollMethod> extendedPollMethod = std::make_unique<MyExtendedPollMethod2>(mads, ev);
     mads->setExtendedPollMethod(std::move(extendedPollMethod));
+
+
+    auto dim = params->getAttributeValue<size_t>("DIMENSION");
+    std::cout << "DIM=" << dim << "\n";
+
+    auto lb = params->getAttributeValue<NOMAD::ArrayOfDouble>("LOWER_BOUND");
+    auto ub = params->getAttributeValue<NOMAD::ArrayOfDouble>("UPPER_BOUND");
+    std::cout << "LB size=" << lb.size() << " UB size=" << ub.size() << "\n";
+
+    auto x0 = params->getAttributeValue<NOMAD::Point>("X0"); // or EvalPoint depending
+    std::cout << "X0 size=" << x0.size() << "\n";
+
+    auto bb = params->getAttributeValue<std::vector<NOMAD::BBInputType>>("BB_INPUT_TYPE");
+    std::cout << "BB_INPUT_TYPE size=" << bb.size() << "\n";
 
     TheMainStep.run();
     TheMainStep.end();

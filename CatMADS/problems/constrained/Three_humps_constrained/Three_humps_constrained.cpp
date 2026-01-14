@@ -155,7 +155,7 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
         std::pow(sig - 0.73, 2.0)
         + std::pow(std::abs(s1) / 3.0, 2.0)
         + std::pow(std::abs(static_cast<double>(x2_int)) / 10.0, 2.0)
-        - 0.02;
+        - 0.12;
 
     const double g5 =
         std::abs(x1_con - x2_con / 10.0 - 1.0)

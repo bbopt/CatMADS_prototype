@@ -77,7 +77,7 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
     const double x1_con = x[Ncat + Nint + 0].todouble();
     const double x2_con = x[Ncat + Nint + 1].todouble();
 
-    // s(x1^cat, x2^cat) table (rows: x1^cat=A..J, cols: x2^cat=A..J)
+    // s(x1^cat, x2^cat) table (rows: x2^cat=A..J, cols: x1^cat=A..J)
     static const double S[10][10] = {
         {11.8,12.3,12.9,13.6,14.1,14.4,14.6,14.7,14.8,14.9}, // A
         {11.2,12.1,13.0,13.9,14.6,15.0,15.3,15.5,15.6,15.7}, // B
@@ -91,7 +91,7 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
         {10.0,10.6,11.2,12.1,13.5,15.5,17.7,20.1,22.4,25.0}  // J
     };
 
-    const double s = S[c1][c2];
+    const double s = S[c2][c1];
 
     // --- Objective ---
     const double f =
@@ -177,11 +177,11 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     ub[Ncat+0] = 10; 
     ub[Ncat+1] = 10;
     // Continuous lower bounds
-    lb[Ncat+0] = 13; 
-    lb[Ncat+1] = 0;
+    lb[Ncat+Nint+0] = 13; 
+    lb[Ncat+Nint+1] = 0;
     // Continuous upper bounds
-    ub[Ncat+0] = 100; 
-    ub[Ncat+1] = 100;
+    ub[Ncat+Nint+0] = 100; 
+    ub[Ncat+Nint+1] = 100;
     allParams->setAttributeValue("LOWER_BOUND", lb);
     allParams->setAttributeValue("UPPER_BOUND", ub);
     

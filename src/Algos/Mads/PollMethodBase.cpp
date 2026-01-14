@@ -212,6 +212,27 @@ std::list<NOMAD::Direction> NOMAD::PollMethodBase::generateFullSpaceScaledDirect
 
             size_t nVG = vg.size();
 
+            // -------------------------------------------- //
+            // TODO : EHH REMOVE
+            //std::cout << "\n=== Variable Group Sanity ===\n";
+            //std::cout << "_n (current DIM) = " << _n << "\n";
+            //std::cout << "vg.size() = " << vg.size() << "\n";
+            //std::cout << "_subsetListVG = " << (_subsetListVG ? "true" : "false") << "\n";
+
+            //std::cout << "vg indices: ";
+            //for (auto idx : vg) std::cout << idx << " ";
+            //std::cout << "\n";
+
+            //std::cout << "directionsSubSpace dimension (first dir): ";
+            //if (!directionsSubSpace.empty())
+            //    std::cout << directionsSubSpace.front().size() << "\n";
+            //else
+            //    std::cout << "(empty)\n";
+            //std::cout << "============================\n" << std::flush;
+            // TODO : EHH REMOVE ABOVE //
+            // -------------------------------------------- //
+
+
             if (!isSecondPass)
             {
                 // Creation of the poll directions in the subspace of the variable group
@@ -225,8 +246,29 @@ std::list<NOMAD::Direction> NOMAD::PollMethodBase::generateFullSpaceScaledDirect
                 _trialPoints.clear();
             }
 
+            // ----------------------------- //
+            // TODO : remove EHH 
+            //std::cout << "\n=== Variable Group Sanity (AFTER GEN) ===\n";
+            //std::cout << "_n (current DIM) = " << _n << "\n";
+            //std::cout << "vg.size() = " << vg.size() << " (nVG=" << nVG << ")\n";
+            //std::cout << "_subsetListVG = " << (_subsetListVG ? "true" : "false") << "\n";
+
+            //std::cout << "vg indices: ";
+            //for (auto idx : vg) std::cout << idx << " ";
+            //std::cout << "\n";
+
+            //std::cout << "directionsSubSpace.size() = " << directionsSubSpace.size() << "\n";
+            //std::cout << "directionsSubSpace.front().size() = "
+            //        << (directionsSubSpace.empty() ? 0 : directionsSubSpace.front().size())
+            //        << "\n";
+            //std::cout << "========================================\n" << std::flush;
+            // --------------------------- //
+
+
             // Convert subspace (in a group of variable) directions to full space directions (all variables -> _n)
-            if (_subsetListVG)
+            // TODO : EHH CHECK with CT if there's a problem here
+            if (_subsetListVG || vg.size() != _n)
+            //if (_subsetListVG) // OLD LINE
             {
                 size_t vgIndex = 0; // For Output debug only
                 for (auto& it : directionsSubSpace)

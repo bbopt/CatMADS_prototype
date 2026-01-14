@@ -9,6 +9,9 @@
 #include <algorithm>
 #include <iomanip>  // For std::setprecision, std::setw
 
+#include <execinfo.h> // TODO : EHH TO REMOVE
+#include <cxxabi.h> // TODO : EHH TO REMOVE
+
 // Initialize static variables
 const std::string NOMAD::ArrayOfDouble::pStart = "(";
 const std::string NOMAD::ArrayOfDouble::pEnd = ")";
@@ -187,6 +190,19 @@ NOMAD::Double& NOMAD::ArrayOfDouble::operator[](size_t i) const
     }
     if (i >= _n)
     {
+        // TODO : EHH REMOVE
+        //std::cerr << "ArrayOfDouble OOB: i=" << i << " size=" << _n << "\n";
+        //void* callstack[64];
+        //int frames = backtrace(callstack, 64);
+        //char** strs = backtrace_symbols(callstack, frames);
+        //std::cerr << "Backtrace (" << frames << " frames):\n";
+        //for (int j = 0; j < frames; ++j)
+        //    std::cerr << "  " << strs[j] << "\n";
+        //free(strs);
+        //std::cerr << std::flush;
+        // TODO : EHH REMOVE ABOVE debug
+
+
         std::ostringstream oss;
         oss << "ArrayOfDouble: i = " << i << " is out of bounds [0, " << _n-1 << "]";
         throw NOMAD::Exception(__FILE__, __LINE__, oss.str());

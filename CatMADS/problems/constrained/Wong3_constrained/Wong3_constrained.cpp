@@ -300,6 +300,8 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS,
     NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS,
     NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS};
+    allParams->setAttributeValue("BB_INPUT_TYPE", bbinput);
+
 
     // Variable group: TODO
     NOMAD::VariableGroup vg0 = {0}; // categorical variables

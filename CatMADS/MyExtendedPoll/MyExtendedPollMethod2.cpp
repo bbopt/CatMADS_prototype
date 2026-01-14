@@ -97,6 +97,8 @@ bool MyExtendedPollMethod2::runImp()
 bool MyExtendedPollMethod2::runOptim(const NOMAD::EvalPoint & pp, NOMAD::EvalPointPtr refBestFeas, 
     NOMAD::EvalPointPtr refBestInf)
 {
+    cout << "entered runOptin() EP" << endl;
+
     bool success = false;
     
     // Set specific evaluator control

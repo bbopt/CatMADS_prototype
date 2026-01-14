@@ -10,7 +10,6 @@ root_dir = os.path.dirname(os.path.dirname(current_file))
 build_dir = os.path.join(root_dir, "build")
 
 #problems_build_dir = os.path.join(build_dir, "CatMADS/problems")
-problems_build_dir = os.path.join(build_dir, "CatMADS/problems/unconstrained")
 
 
 # Build main NOMAD files
@@ -68,6 +67,9 @@ def run_problem_executable(problem):
 
 if __name__ == '__main__':
 
+    problems_build_dir = os.path.join(build_dir, "CatMADS/problems/constrained")
+
+
     #problems = ["AckleyHard", "Beale", "Beale_constrained", "Branin", "Branin_constrained", "Bukin6", "Bukin6_constrained",
     #"Dembo5_constrained", "EDV2", "EDV2_constrained", "G09_constrained", "GoldsteinPrice_constrained",
     #"GoldsteinPrice1", "GoldsteinPrice2", "Himmelblau_constrained", "HS78", "HS144_constrained", "Pentagon_constrained",
@@ -76,10 +78,16 @@ if __name__ == '__main__':
     #"Toy_constrained", "Wong1", "Wong2_constrained", "Zakharov"]
 
 
-    problems = ["Camel", "EVD61", "Gamma", "Hal04", "Hartmann", "Ishigami",
-                "KowalikOsborne", "Levy", "McCormick", "OET5",
-                "Roustant", "Shekel", "ThreeHump", "Wong3"]
+    #problems = ["Camel", "EVD61", "Gamma", "Hal04", "Hartmann", "Ishigami",
+    #            "KowalikOsborne", "Levy", "McCormick", "OET5",
+    #            "Roustant", "Shekel", "ThreeHump", "Wong3"]
 
+
+    problems = ["SpeedReducer_constrained", "Spring_constrained", "G07_constrained",
+                "CarSideImpact_constrained", "Dembo7_constrained", "MAD_constrained",
+                "Wong3_constrained", "Welded_beam_constrained", "Three_bar_truss_constrained",
+                "Three_humps_constrained", "McCormick_constrained", "G06_constrained",
+                "Shekel_constrained", "Ishigami_constrained"]
 
     # 1) Delete/clean build with 
     # "rm -rf ~/nomad4dev/build" in terminal

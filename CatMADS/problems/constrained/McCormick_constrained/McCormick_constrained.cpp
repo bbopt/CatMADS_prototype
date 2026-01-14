@@ -230,8 +230,8 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     // Integer upper bounds
     ub[Ncat+Nint+0] = 4;
     ub[Ncat+Nint+1] = 4;
+    ub[Ncat+Nint+2] = 2;
     ub[Ncat+Nint+3] = 2;
-    ub[Ncat+Nint+4] = 2;
     allParams->setAttributeValue("LOWER_BOUND", lb);
     allParams->setAttributeValue("UPPER_BOUND", ub);
     

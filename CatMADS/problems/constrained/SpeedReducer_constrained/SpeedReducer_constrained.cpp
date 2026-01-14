@@ -100,7 +100,7 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
             /* x2=G */ {17, 24, 22, 19, 27, 21, 23, 20},
             /* x2=H */ {22, 19, 26, 22, 18, 23, 20, 25}
         };
-        return S[c2][c1]; // row = x2^cat, col = x1^cat
+        return S[c2][c1];   // row = x2^cat, col = x1^cat
     };
 
     const double s = s_value(x_cat[0], x_cat[1]);

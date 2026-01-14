@@ -168,7 +168,7 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
         - 0.163 * x3 * s
         + 0.001232 * x3 * x6
         - 0.166 * static_cast<double>(xi2) * s
-        + 0.227 * std::pow(static_cast<double>(xi2), 2.0)
+        + 0.02 * std::pow(static_cast<double>(xi2), 2.0)   
         - 0.32;
 
     const double g5 =
@@ -200,7 +200,7 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
         - 32.0;
 
     const double g8 =
-        4.72
+        0.62                                         
         - 0.5 * x4
         - 0.19 * x2 * x3
         - 0.0122 * x4 * x6
@@ -225,6 +225,7 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
         - 0.0556 * s * x7
         - 0.000786 * std::pow(x7, 2.0)
         - 15.7;
+
 
     // Set BBO output: "f g1 g2 ... g10"
     std::string bbo = NOMAD::Double(f).tostring()
@@ -271,9 +272,9 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     ub[1] = 9;
     // Integer lower bounds
     lb[Ncat+0] = -10; 
-    lb[Ncat+1] =  25;
+    lb[Ncat+1] = -10;
     // Integer upper bounds
-    ub[Ncat+0] = -10; 
+    ub[Ncat+0] =  25; 
     ub[Ncat+1] =  25;
     // Continuous lower bounds: specific variables
     lb[Ncat+Nint+1] =  0.45; //2
@@ -294,7 +295,7 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
 
     // Variable group: TODO
     NOMAD::VariableGroup vg0 = {0,1}; // categorical variables
-    NOMAD::VariableGroup vg1 = {1,2, 3,4,5,6,7,8,9}; // quantitative variables
+    NOMAD::VariableGroup vg1 = {2,3, 4,5,6,7,8,9,10}; // quantitative variables
     allParams->setAttributeValue("VARIABLE_GROUP", NOMAD::ListOfVariableGroup({vg0,vg1}));
     
     // Primary poll in two subpolls

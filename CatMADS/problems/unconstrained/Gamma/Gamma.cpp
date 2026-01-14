@@ -65,19 +65,21 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
     }
 
     // ---- Extract categorical variable (encoded as 0..60 for "1".. "61") ----
-    const int x_cat = static_cast<int>(x[0].todouble());
-
-    // ---- Extract continuous variables (4 variables) ----
-    std::vector<double> xc(Ncon);
-    for (int i = 0; i < Ncon; ++i)
+    // Use rounding + range check for safety.
+    int x_cat = static_cast<int>(std::llround(x[0].todouble()));
+    if (x_cat < 0 || x_cat >= Lcat)
     {
-        xc[i] = x[Ncat + Nint + i].todouble(); // starts at index 1
+        // Penalize out-of-range categorical values rather than crashing.
+        x.setBBO(NOMAD::Double(1e20).tostring());
+        countEval = true;
+        return true;
     }
 
-    const double x1 = xc[0];
-    const double x2 = xc[1];
-    const double x3 = xc[2];
-    const double x4 = xc[3];
+    // ---- Extract continuous variables (4 variables) ----
+    const double x1 = x[1].todouble();
+    const double x2 = x[2].todouble();
+    const double x3 = x[3].todouble();
+    const double x4 = x[4].todouble();
 
     // ---- s(x^{cat}) lookup table for categories "1".. "61" ----
     // Index 0 corresponds to "1", index 60 corresponds to "61".
@@ -93,23 +95,55 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
 
     const double s = s_table[x_cat];
 
-    // ---- Compute objective ----
-    // f = x1 * (( s + x2 + 1/(x3*s + x4) )^(s+1/2) / (s+1)^(s+1/2)) - 1
-    const double denom_inner = (x3 * s + x4);
-    const double inner = s + x2 + 1.0 / denom_inner;
+    // ---- Stable objective constants ----
+    constexpr double eps = 1e-2;   // \varepsilon
+    constexpr double delta = 1e-6; // \delta
+
+    // ---- Compute objective (stable version) ----
+    // z = x3*s + x4
+    // inner = s + x2 + z/(z^2 + eps^2)
+    // base = sqrt(inner^2 + delta^2)  (strictly positive)
+    // f = x1 * ( base^(s+1/2) / (s+1)^(s+1/2) ) - 1
+    const double z = x3 * s + x4;
+    const double inner = s + x2 + (z / (z * z + eps * eps));
+    const double base = std::sqrt(inner * inner + delta * delta);
 
     const double exponent = s + 0.5;
 
-    const double num = std::pow(inner, exponent);
-    const double den = std::pow(s + 1.0, exponent);
+    // Compute ratio in log-space to reduce overflow risk:
+    // (base/(s+1))^exponent = exp(exponent * log(base/(s+1)))
+    const double ratio = base / (s + 1.0);
 
-    const double f = x1 * (num / den) - 1.0;
+    // ratio is > 0 by construction, but keep a guard for numerical weirdness.
+    if (!(ratio > 0.0) || !std::isfinite(ratio) || !std::isfinite(exponent))
+    {
+        x.setBBO(NOMAD::Double(1e20).tostring());
+        countEval = true;
+        return true;
+    }
+
+    double theta = exponent * std::log(ratio);
+
+    // Optional (recommended): clamp to avoid exp overflow.
+    // exp(700) is near the limit of double.
+    if (theta > 700.0) theta = 700.0;
+    if (theta < -700.0) theta = -700.0;
+
+    const double power_term = std::exp(theta);
+
+    const double f = x1 * power_term - 1.0;
+
+    // Final safety guard
+    if (!std::isfinite(f))
+    {
+        x.setBBO(NOMAD::Double(1e20).tostring());
+        countEval = true;
+        return true;
+    }
 
     // ---- Return to NOMAD ----
-    NOMAD::Double F(f);
-    x.setBBO(F.tostring());
+    x.setBBO(NOMAD::Double(f).tostring());
     countEval = true;
-
     return true;
 }
 

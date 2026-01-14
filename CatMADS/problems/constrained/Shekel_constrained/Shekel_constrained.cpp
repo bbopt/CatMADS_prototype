@@ -23,7 +23,7 @@ const int Ncon=6;
 const int N=Ncat+Nint+Ncon;
 const int Lcat=81;
 const NOMAD::BBOutputTypeList bbOutputTypeListSetup = {NOMAD::BBOutputType::OBJ,
-                    NOMAD::BBOutputType::PB, NOMAD::BBOutputType::PB, NOMAD::BBOutputType::PB, NOMAD::BBOutputType::PB};
+                    NOMAD::BBOutputType::PB, NOMAD::BBOutputType::PB, NOMAD::BBOutputType::PB};
 const bool IsConstrained = true;
 
 // Global variables

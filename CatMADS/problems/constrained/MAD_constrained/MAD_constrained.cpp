@@ -22,7 +22,8 @@ const int Nint=0;
 const int Ncon=2;
 const int N=Ncat+Nint+Ncon;
 const int Lcat=12;
-const NOMAD::BBOutputTypeList bbOutputTypeListSetup = {NOMAD::BBOutputType::OBJ, NOMAD::BBOutputType::PB};
+const NOMAD::BBOutputTypeList bbOutputTypeListSetup = {NOMAD::BBOutputType::OBJ,
+         NOMAD::BBOutputType::PB, NOMAD::BBOutputType::PB, NOMAD::BBOutputType::PB};
 const bool IsConstrained = true;
 
 // Global variables
@@ -127,28 +128,32 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
             break;
     }
 
-    // Constraint g(x) (piecewise by category groups), always g <= 0
-    double g = 0.0;
+    // Constraints gi(x) <= 0
+    double g1 = 0.0;
     if (cat >= 0 && cat <= 2) // {A,B,C}
     {
-        g = 0.5 - (x1 * x1 + x2 * x2);
+        g1 = 0.5 - (x1 * x1 + x2 * x2);
     }
     else if (cat >= 3 && cat <= 5) // {D,E,F}
     {
-        g = 3.0 * x1 + x2 + 2.5;
+        g1 = 3.0 * x1 + x2 + 2.5;
     }
     else if (cat >= 6 && cat <= 8) // {G,H,I}
     {
-        g = x2 - 0.05 * x1 - 0.5;
+        g1 = x2 - 0.05 * x1 - 0.5;
     }
     else // {J,K,L}
     {
-        g = 0.9 * x1 - x2 + 1.0;
+        g1 = 0.9 * x1 - x2 + 1.0;
     }
+
+    double g2 = std::pow(x1 - 1.0, 2.0) + std::pow(x2 - 1.0, 2.0) - 0.5;
+    double g3 = x1 + x2 - 1.0;
+
 
     // Set BBO output: "f g"
     std::string bbo = NOMAD::Double(f).tostring()
-        + " " + NOMAD::Double(g).tostring();
+        + " " + NOMAD::Double(g1).tostring() + " " + NOMAD::Double(g2).tostring() + " " + NOMAD::Double(g3).tostring();
 
     x.setBBO(bbo);
 
@@ -171,13 +176,16 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     std::string budgetLHsFormat = std::to_string(nbEvalsLHS) + " 0";
     allParams->setAttributeValue("LH_SEARCH", NOMAD::LHSearchType(budgetLHsFormat.c_str()));
 
-    // Bounds for all variables except the first group (categorical variable)
-    auto lb = NOMAD::ArrayOfDouble(N, -3.0);
+    // Bounds for all variables
+    auto lb = NOMAD::ArrayOfDouble(N,  -3.0);
     auto ub = NOMAD::ArrayOfDouble(N,  3.0);
     // Categorical lower bounds
     lb[0] = 0; 
     // Categorical upper bounds
     ub[0] = 11; 
+    // Continuous lower bounds
+    lb[Ncat+1] = 0.1;
+
     allParams->setAttributeValue("LOWER_BOUND", lb);
     allParams->setAttributeValue("UPPER_BOUND", ub);
     

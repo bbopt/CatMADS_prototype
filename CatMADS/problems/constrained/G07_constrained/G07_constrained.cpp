@@ -129,11 +129,36 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
     const double g1 = -105.0 + 4.0 * s1 + 5.0 * s2 - 3.0 * xc1 + 9.0 * xc2;
     const double g2 =  10.0 * s1 - 8.0 * s2 - 17.0 * xc1 + 2.0 * xc2;
     const double g3 =  -8.0 * s1 + 2.0 * s2 + 5.0 * xc1 - 2.0 * (xc2 * xc2) - 12.0;
-    const double g4 =  3.0 * std::pow(s1 - 2.0, 2.0) + 4.0 * std::pow(s2 - 3.0, 2.0) + 2.0 * (s3 * s3) - 7.0 * s4 - 120.0;
-    const double g5 =  5.0 * (s1 * s1) + 8.0 * s2 + std::pow(s3 - 6.0, 2.0) - 2.0 * s4 - 40.0;
-    const double g6 =  (s1 * s1) + 2.0 * std::pow(s2 - 2.0, 2.0) - 2.0 * s1 * s2 + 14.0 * s5 - 6.0 * s6;
-    const double g7 =  0.5 * std::pow(s1 - 8.0, 2.0) + 2.0 * std::pow(s2 - 4.0, 2.0) + 3.0 * (s5 * s5) - s6 - 30.0;
-    const double g8 = -3.0 * s1 + 6.0 * s2 + 12.0 * std::pow(xc1 - 8.0, 2.0) - 7.0 * (xc2 * xc2);
+
+    const double g4 =  3.0 * std::pow(s1 - 2.0, 2.0)
+                    + 4.0 * std::pow(s2 - 3.0, 2.0)
+                    + 2.0 * (s3 * s3)
+                    - 7.0 * s4
+                    - 220.0;
+
+    const double g5 =  5.0 * (s1 * s1)
+                    + 8.0 * s2
+                    + std::pow(s3 - 6.0, 2.0)
+                    - 2.0 * s4
+                    - 95.0;
+
+    const double g6 =  (s1 * s1)
+                    + 2.0 * std::pow(s2 - 2.0, 2.0)
+                    - 2.0 * s1 * s2
+                    + 14.0 * s5
+                    - 6.0 * s6
+                    - 20.0;
+
+    const double g7 =  0.5 * std::pow(s1 - 8.0, 2.0)
+                    + 2.0 * std::pow(s2 - 4.0, 2.0)
+                    + 3.0 * (s5 * s5)
+                    - s6
+                    - 40.0;
+
+    const double g8 = -3.0 * s1
+                    + 6.0 * s2
+                    + 3.0 * std::pow(xc1 - 8.0, 2.0)
+                    - 7.0 * (xc2 * xc2);
 
     // Set BBO output: "f g1 g2 ... g8"
     std::string bbo = NOMAD::Double(f).tostring()
