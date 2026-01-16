@@ -16,18 +16,14 @@
 #include "Math/RNG.hpp"
 
 // Setup variables for all problems
-std::string basePath = "/home/edhal/CatMADS_prototype/CatMADS/";  // MUST BE HARDCODED FOR PROTOTYPE IMPLEMENTATION
+std::string basePath = "/home/edhal/CatMADS_prototype_Porifera/CatMADS/";  // MUST BE HARDCODED FOR PROTOTYPE IMPLEMENTATION
 std::string pythonEnv = "/home/edhal/gp-catmads-env/bin/python"; // MUST BE HARDCODED FOR PROTOTYPE IMPLEMENTATION
-const int nbEvalsPerVariable=250; //250
+const int nbEvalsPerVariable=10; //250
 const int nbEvals = N*nbEvalsPerVariable; // N is initialized in a problem specific folder
 const int nbEvalsLHS=static_cast<int>(nbEvals*0.2); //0.2 for GPCatMADS 
 int nbCatNeighbors = std::max(2, static_cast<int>(std::sqrt(Lcat)));
-const int seedSetup = 2; 
-// unconstrained
-// 0: done, 1: done, 2: done
+const int seedSetup = 0; 
 
-// constrained
-// 0: done, 1:done
 
 // Paths
 std::string fileCache = basePath + "readwrite_files/cachePts.txt";
@@ -35,7 +31,8 @@ std::string fileCatDirections = basePath + "readwrite_files/catDirections.txt";
 std::string fileParams = basePath + "readwrite_files/params.pkl";
 
 // Python scripts
-std::string simpleCategoricalDist = basePath + "python_scripts/simple_cat_distance.py";
+//std::string simpleCategoricalDist = basePath + "python_scripts/simple_cat_distance.py";
+std::string simpleCategoricalDist = basePath + "python_scripts/Porifera_cat_distance.py";
 std::string catPoll = basePath + "python_scripts/cat_neighbors.py";
 
 
