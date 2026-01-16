@@ -27,4 +27,3 @@ else()
 endif()
 
 
-add_subdirectory(problems)

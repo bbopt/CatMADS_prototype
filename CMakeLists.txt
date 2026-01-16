@@ -315,3 +315,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)
 # Add CatMADS prototype implementation
 #
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/CatMADS)
+
+# Add CatMADS prototype implementation
+#
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/Porifera)

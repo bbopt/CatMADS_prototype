@@ -101,6 +101,7 @@ if __name__ == '__main__':
     new_suggestions = []
     for i in range(nb_cat_neighbors):
         new_suggestion = np.concatenate((closest_vectors[i], x_quant)).astype(float)
+        #print("Point ", str(i), ": ", new_suggestion)
         new_suggestions.append(new_suggestion)
     new_suggestions = np.array(new_suggestions)
 
@@ -122,6 +123,3 @@ if __name__ == '__main__':
             # Write formatted direction to file
             file.write(f"({' '.join(formatted_direction)})\n")
 
-
-
-  
