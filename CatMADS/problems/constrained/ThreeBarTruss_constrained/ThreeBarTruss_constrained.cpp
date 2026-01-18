@@ -212,7 +212,7 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     allParams->setAttributeValue("RNG_ALT_SEEDING", true);
 
     // File history for convergence plots and profiles
-    allParams->setAttributeValue("STATS_FILE", NOMAD::ArrayOfString("three_bar_truss_constrained.txt bbe sol obj cons_h"));
+    allParams->setAttributeValue("STATS_FILE", NOMAD::ArrayOfString("threebartruss_constrained.txt bbe sol obj cons_h"));
 
     // Parameters validation
     allParams->checkAndComply();

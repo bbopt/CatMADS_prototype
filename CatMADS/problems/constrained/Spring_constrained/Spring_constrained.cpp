@@ -80,14 +80,14 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
         x_con[i] = x[Ncat + Nint + i].todouble();
 
     // Problem variables:
-    // Here x_5^cat is already encoded as k ∈ {1,...,50}.
-    const int k  = x_cat[0];
-    const int x3 = x_int[0];
-    const int x4 = x_int[1];
-    const double x1 = x_con[0];
-    const double x2 = x_con[1];
+    // Here x_1^cat is already encoded as k ∈ {1,...,50}.
+    const int k    = x_cat[0];      // x_1^{cat}
+    const int xi1  = x_int[0];      // x_1^{integer}
+    const int xi2  = x_int[1];      // x_2^{integer}
+    const double x1c = x_con[0];    // x_1^{continuous}
+    const double x2c = x_con[1];    // x_2^{continuous}
 
-    // s = s(x_5^cat)
+    // s = s(x_1^cat)
     const double s =
         (k % 2 == 0)
             ? (10.0 + 0.3 * k + 0.7 * std::sin(M_PI * k / 6.0))
@@ -95,30 +95,30 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
 
     // Objective
     const double f =
-        (s + 2.0) * x1 * (x2 * x2)
-        + 0.05 * x3 * (x1 * x1)
-        + 0.03 * (static_cast<double>(x4) * x4) * x2
-        + 0.01 * x3 * x4 * s;
+        (s + 2.0) * x1c * (x2c * x2c)
+        + 0.05 * xi1 * (x1c * x1c)
+        + 0.03 * (static_cast<double>(xi2) * xi2) * x2c
+        + 0.01 * xi1 * xi2 * s;
 
     // Constraints g_i(x) <= 0
     const double g1 =
-        71785.0 * std::pow(x2, 4.0)
-        - std::pow(x1, 3.0) * s
-        + 500.0 * x3 * x4;
+        71785.0 * std::pow(x2c, 4.0)
+        - std::pow(x1c, 3.0) * s
+        + 500.0 * xi1 * xi2;
 
     const double g2 =
-        5108.0 * (x2 * x2) * (4.0 * (x1 * x1) - x1 * x2)
-        + 12566.0 * (x1 * std::pow(x2, 3.0) - std::pow(x1, 4.0))
-        - 64187128.0 * std::pow(x2, 5.0) * (x1 - x2)
-        + 2000.0 * (static_cast<double>(x3) * x3 - x4);
+        5108.0 * (x2c * x2c) * (4.0 * (x1c * x1c) - x1c * x2c)
+        + 12566.0 * (x1c * std::pow(x2c, 3.0) - std::pow(x1c, 4.0))
+        - 64187128.0 * std::pow(x2c, 5.0) * (x1c - x2c)
+        + 2000.0 * (static_cast<double>(xi1) * xi1 - xi2);
 
     const double g3 =
-        (x1 * x1) * s
-        - 140.45 * x2
-        + 10.0 * x3;
+        (x1c * x1c) * s
+        - 140.45 * x2c
+        + 10.0 * xi1;
 
-    const double g4 = x1 + x2 - 1.5;
-    const double g5 = static_cast<double>(x3) + 2.0 * x4 - 15.0;
+    const double g4 = x1c + x2c - 1.5;
+    const double g5 = static_cast<double>(xi1) + 2.0 * xi2 - 15.0;
 
     // Set BBO output: "f g1 g2 g3 g4 g5"
     std::string bbo = NOMAD::Double(f).tostring()
@@ -133,6 +133,7 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
     countEval = true;
     return true;
 }
+
 
 
 

@@ -299,7 +299,7 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
 
     // File history for convergence plots and profiles
     // TODO: here file history
-    allParams->setAttributeValue("STATS_FILE", NOMAD::ArrayOfString("shekel.txt bbe sol obj cons_h"));
+    allParams->setAttributeValue("STATS_FILE", NOMAD::ArrayOfString("shekel_constrained.txt bbe sol obj cons_h"));
 
     // Parameters validation
     allParams->checkAndComply();
