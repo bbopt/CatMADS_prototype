@@ -5,4 +5,4 @@ The current code is a proof of concept. While the code is shared for transparenc
 
 If you are interested in using CatMADS, feel free to contact edward.halle-hannan@polymtl.ca
 
-This repository contains 32 analytical mixed-variable optimization problems, including 16 constrained ones, for benchmarking.
+This repository contains 60 analytical mixed-variable optimization problems, including 30 constrained ones, for benchmarking.
