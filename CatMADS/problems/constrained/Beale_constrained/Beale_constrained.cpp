@@ -113,8 +113,8 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
     double f = term1 + term2 + term3;
 
     // Compute constraints
-    double g1 = 3 * std::pow(x_con[0] - 2, 2) + 4 * std::pow(x_con[1] - 3, 2) + 2 * x_con[2] - 80;
-    double g2 = 5 * std::pow(x_con[0], 2) + 8 * x_con[1] + std::pow(x_con[2] - 6, 2) - 20;
+    double g1 = 3 * std::pow(x_con[0] - 2, 2) + 4 * std::pow(x_con[1] - 3, 2) + 2 * x_con[2] - 100;
+    double g2 = 5 * std::pow(x_con[0], 2) + 8 * x_con[1] + std::pow(x_con[2] - 6, 2) - 30;
     double g3 = std::pow(x_con[0], 2) + 2 * std::pow(x_con[1] - 2, 2) - 2 * x_con[0] * x_con[1] - 6 * x_con[2];
 
     // Convert constraints to NOMAD format

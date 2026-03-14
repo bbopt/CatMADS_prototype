@@ -85,12 +85,14 @@ if __name__ == '__main__':
 
 
     # New constrained pbs
-    problems = ["SpeedReducer_constrained", "Spring_constrained", "G07_constrained",
-                "CarSideImpact_constrained", "Dembo7_constrained", "MAD_constrained",
-                "Wong3_constrained", "Welded_beam_constrained", "Three_bar_truss_constrained",
-                "Three_humps_constrained", "McCormick_constrained", "G06_constrained",
-                "Shekel_constrained", "Ishigami_constrained"]
+    #problems = ["SpeedReducer_constrained", "Spring_constrained", "G07_constrained",
+    #            "CarSideImpact_constrained", "Dembo7_constrained", "MAD_constrained",
+    #            "Wong3_constrained", "Welded_beam_constrained", "Three_bar_truss_constrained",
+    #            "Three_humps_constrained", "McCormick_constrained", "G06_constrained",
+    #            "Shekel_constrained", "Ishigami_constrained"]
 
+
+    problems = ["Beale_constrained"]
 
 
     # 1) Delete/clean build with 
