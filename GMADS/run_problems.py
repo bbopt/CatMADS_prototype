@@ -96,18 +96,18 @@ if __name__ == '__main__':
     # Unconstrained for G-MADS vs CatMADS
     #problems = ["GoldsteinPrice2", "Ishigami", "Hartmann", "Levy", "Camel", "Gamma", "EVD61", "Hal04",
     #            "OET5", "Wong3", "Roustant", "KowalikOsborne", "ThreeHump", "McCormick", "Shekel"]      # 15 pbs
-    problems = ["Ishigami", "Hartmann", "Levy", "Camel", "Gamma", "EVD61",
-                "KowalikOsborne", "ThreeHumps", "McCormick", "Shekel"]
+    #problems = ["Ishigami_GMADS", "Hartmann_GMADS", "Levy_GMADS", "Camel_GMADS", "Gamma_GMADS", "EVD61_GMADS",
+    #            "KowalikOsborne_GMADS", "ThreeHumps_GMADS", "McCormick_GMADS", "Shekel_GMADS"]
 
     # Constrained for G-MADS vs CatMADS
-    #problems = ["CarSideImpact_constrained", "WeldedBeam_constrained", "G06_constrained", "SpeedReducer_constrained",
-    #            "G07_constrained", "McCormick_constrained", "Ishigami_constrained", 
-    #            "ThreeHumps_constrained", "Shekel_constrained", "Spring_constrained"] 
-    #"Himmelblau_constrained", "ReinforcedConcreteBeam_constrained"]
+    problems = ["CarSideImpact_constrained_GMADS", "WeldedBeam_constrained_GMADS", "G06_constrained_GMADS", "SpeedReducer_constrained_GMADS",
+                "G07_constrained_GMADS", "McCormick_constrained_GMADS", "Ishigami_constrained_GMADS",
+                "ThreeHumps_constrained_GMADS", "Shekel_constrained_GMADS", "Spring_constrained_GMADS"]
+    #"Himmelblau_constrained_GMADS", "ReinforcedConcreteBeam_constrained_GMADS"]
 
 
     # 0) Proper directory with problems
-    problems_build_dir = os.path.join(build_dir, "CatMADS/problems/unconstrained")
+    problems_build_dir = os.path.join(build_dir, "GMADS/problems/constrained")
 
 
     # 1) Delete/clean build with 

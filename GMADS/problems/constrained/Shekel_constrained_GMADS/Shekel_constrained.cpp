@@ -12,8 +12,7 @@
 #include "Util/AllStopReasons.hpp"
 #include "Math/MatrixUtils.hpp"
 #include "Math/RNG.hpp"
-#include "CatMADS.hpp"
-#include "MyExtendedPoll/MyExtendedPollMethod2.hpp"
+#include "GMADS.hpp"
 
 
 // Setup of the problem
@@ -222,8 +221,7 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
 
 
 
-void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> & myMapDirTypeToVG, NOMAD::ListOfVariableGroup & myListFixVGForQMS)
-{
+void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams){
 
     // Parameters creation
     allParams->setAttributeValue("DIMENSION", N);
@@ -263,35 +261,30 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     allParams->setAttributeValue("BB_INPUT_TYPE", bbinput);
 
     // Variable group: TODO
-    NOMAD::VariableGroup vg0 = {0,1,2,3}; // categorical variables
-    NOMAD::VariableGroup vg1 = {4,5,6,7, 8,9,10,11,12,13}; // quantitative variables
-    allParams->setAttributeValue("VARIABLE_GROUP", NOMAD::ListOfVariableGroup({vg0,vg1}));
+    //NOMAD::VariableGroup vg0 = {0,1,2,3}; // categorical variables
+    //NOMAD::VariableGroup vg1 = {4,5,6,7, 8,9,10,11,12,13}; // quantitative variables
+    //allParams->setAttributeValue("VARIABLE_GROUP", NOMAD::ListOfVariableGroup({vg0,vg1}));
     
-    // Primary poll in two subpolls
-    NOMAD::DirectionTypeList dtList = {NOMAD::DirectionType::USER_FREE_POLL, NOMAD::DirectionType::ORTHO_2N};
-    allParams->setAttributeValue("DIRECTION_TYPE",dtList);
+    // Poll in two subpolls
+    //NOMAD::DirectionTypeList dtList = {NOMAD::DirectionType::USER_FREE_POLL, NOMAD::DirectionType::ORTHO_2N};
+    //allParams->setAttributeValue("DIRECTION_TYPE",dtList);
     
-    // Secondary poll in two subpolls
-    NOMAD::DirectionTypeList dtListSec = {NOMAD::DirectionType::USER_FREE_POLL, NOMAD::DirectionType::DOUBLE};
-    allParams->setAttributeValue("DIRECTION_TYPE_SECONDARY_POLL",dtListSec);
-
     // Set the map of direction types and variable group. This is passed to Mads in the main function
-    //myMapDirTypeToVG = {{dtList[0],{vg0}},{dtList[1],{vg1}}}; // Before constraints
-    myMapDirTypeToVG = {{dtList[0],{vg0}},{dtList[1],{vg1}},{dtListSec[1],{vg1}}};
+    //myMapDirTypeToVG = {{dtList[0],{vg0}},{dtList[1],{vg1}}};
     
     // Constraints and objective
     allParams->setAttributeValue("BB_OUTPUT_TYPE", bbOutputTypeListSetup);
 
     // Quad search where the first group of variables is fixed
-    allParams->setAttributeValue("QUAD_MODEL_SEARCH", true);
-    myListFixVGForQMS = {vg0};
+    //allParams->setAttributeValue("QUAD_MODEL_SEARCH", true);
+    //myListFixVGForQMS = {vg0};
 
     // Default searches that are deactivated 
     allParams->setAttributeValue("NM_SEARCH", false);
     allParams->setAttributeValue("SPECULATIVE_SEARCH", false);
     
     // Enable the user search method
-    allParams->setAttributeValue("USER_SEARCH", true);
+    //allParams->setAttributeValue("USER_SEARCH", true);
 
     // Display
     allParams->setAttributeValue("DISPLAY_DEGREE", 2);
@@ -304,7 +297,7 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
 
     // File history for convergence plots and profiles
     // TODO: here file history
-    allParams->setAttributeValue("STATS_FILE", NOMAD::ArrayOfString("shekel_constrained.txt bbe sol obj cons_h"));
+    allParams->setAttributeValue("STATS_FILE", NOMAD::ArrayOfString("shekel_constrained_gmads.txt bbe sol obj cons_h"));
 
     // Parameters validation
     allParams->checkAndComply();
@@ -320,11 +313,11 @@ int main ( int argc , char ** argv )
 
     
     // List of files to clear
-        std::vector<std::string> filesToClear = {
-            fileCache,
-            fileCatDirections,
-            fileParams
-        };
+    std::vector<std::string> filesToClear = {
+        fileCache,
+        fileCatDirections,
+        fileParams
+    };
 
     // Clear the files at the start
     deleteFiles(filesToClear);
@@ -336,56 +329,60 @@ int main ( int argc , char ** argv )
     auto params = std::make_shared<NOMAD::AllParameters>();
     
     // Map to associate a direction type to a group of variable.
-    std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> myMapDirTypeToVG;
+    //std::map<NOMAD::DirectionType,NOMAD::ListOfVariableGroup> myMapDirTypeToVG;
     
     // List of fix variable group for Quad model search
-    NOMAD::ListOfVariableGroup myListFixVGForQMS;
+    //NOMAD::ListOfVariableGroup myListFixVGForQMS;
 
-    initAllParams(params, myMapDirTypeToVG, myListFixVGForQMS);
+    initAllParams(params);
     TheMainStep.setAllParameters(params);
 
     // Custom Evaluator
     //std::unique_ptr<My_Evaluator> ev(new My_Evaluator(params->getEvalParams())); //before ExtendedPoll
-    std::shared_ptr<NOMAD::Evaluator> ev(new My_Evaluator(params->getEvalParams())); //with ExtendedPoll
-    TheMainStep.setEvaluator(std::move(ev));
+    //std::shared_ptr<NOMAD::Evaluator> ev(new My_Evaluator(params->getEvalParams())); //with ExtendedPoll
+    //TheMainStep.setEvaluator(std::move(ev));
     
+    auto ev = std::make_unique<My_Evaluator>(params->getEvalParams());
+    TheMainStep.addEvaluator(std::move(ev));
+
     // Main step start initializes Mads (default algorithm)
     TheMainStep.start();
        
     // Define new sort function and sort according to that function
-    auto customOrder = std::make_shared<CustomOrder>();
-    NOMAD::EvcInterface::getEvaluatorControl()->setUserCompMethod(customOrder);
+    //auto customOrder = std::make_shared<CustomOrder>();
+    //NOMAD::EvcInterface::getEvaluatorControl()->setUserCompMethod(customOrder);
+
 
     // Define post eval callback
-    NOMAD::EvalCallbackFunc<NOMAD::CallbackType::POST_EVAL_UPDATE> cbPostEvalUpdate = customPostEvalUpdateCB;
-    NOMAD::EvcInterface::getEvaluatorControl()->addEvalCallback<NOMAD::CallbackType::POST_EVAL_UPDATE>(cbPostEvalUpdate);
+    //NOMAD::EvalCallbackFunc<NOMAD::CallbackType::POST_EVAL_UPDATE> cbPostEvalUpdate = customPostEvalUpdateCB;
+    //NOMAD::EvcInterface::getEvaluatorControl()->addEvalCallback<NOMAD::CallbackType::POST_EVAL_UPDATE>(cbPostEvalUpdate);
 
     // Registering the callback functions
-    auto mads = std::dynamic_pointer_cast<NOMAD::Mads>(TheMainStep.getAlgo(NOMAD::StepType::ALGORITHM_MADS));
-    if (nullptr == mads)
-    {
-        throw NOMAD::Exception(__FILE__,__LINE__,"Cannot access to Mads algorithm");
-    }    
+    //auto mads = std::dynamic_pointer_cast<NOMAD::Mads>(TheMainStep.getAlgo(NOMAD::StepType::ALGORITHM_MADS));
+    //if (nullptr == mads)
+    //{
+    //    throw NOMAD::Exception(__FILE__,__LINE__,"Cannot access to Mads algorithm");
+    //}    
     
     // Callbacks for search
-    mads->addCallback(NOMAD::CallbackType::USER_METHOD_SEARCH, userSearchMethodCallbackSpeculative);
+    //mads->addCallback(NOMAD::CallbackType::USER_METHOD_SEARCH, userSearchMethodCallbackSpeculative);
     //mads->addCallback(NOMAD::CallbackType::USER_METHOD_SEARCH_2, userSearchMethodCallbackGP);
     
     // Default quad model search (QMS) must not consider categorical variable.
     // Give access to the group of categorical variables.
     // Their values are fixed during QMS
-    params->getRunParams()->setListFixVGForQuadModelSearch(params->getPbParams(), myListFixVGForQMS );
+    //params->getRunParams()->setListFixVGForQuadModelSearch(params->getPbParams(), myListFixVGForQMS );
 
 
     // Callback to generate Mads user poll trial points
     // Add a custom poll method on a variable group.
-    mads->addCallback(NOMAD::CallbackType::USER_METHOD_FREE_POLL, userPollMethodCallback);
+    //mads->addCallback(NOMAD::CallbackType::USER_METHOD_FREE_POLL, userPollMethodCallback);
     // Associate direction type and variable groups
-    params->getRunParams()->setMapDirTypeToVG(params->getPbParams(), myMapDirTypeToVG);
+    //params->getRunParams()->setMapDirTypeToVG(params->getPbParams(), myMapDirTypeToVG);
     
     // Set user extended poll method
-    std::unique_ptr<NOMAD::ExtendedPollMethod> extendedPollMethod = std::make_unique<MyExtendedPollMethod2>(mads, ev);
-    mads->setExtendedPollMethod(std::move(extendedPollMethod));
+    //std::unique_ptr<NOMAD::ExtendedPollMethod> extendedPollMethod = std::make_unique<MyExtendedPollMethod2>(mads, ev);
+    //mads->setExtendedPollMethod(std::move(extendedPollMethod));
 
     TheMainStep.run();
     TheMainStep.end();

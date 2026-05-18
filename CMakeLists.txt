@@ -315,3 +315,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src)
 # Add CatMADS prototype implementation
 #
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/CatMADS)
+
+
+#
+# Add GMADS implementation for comparing CatMADS
+#
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/GMADS)
