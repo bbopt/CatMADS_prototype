@@ -212,7 +212,7 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams)
     allParams->setAttributeValue("BB_OUTPUT_TYPE", bbOutputTypeListSetup);
 
     // Quad search where the first group of variables is fixed
-    allParams->setAttributeValue("QUAD_MODEL_SEARCH", true);
+    allParams->setAttributeValue("QUAD_MODEL_SEARCH", false);
     //myListFixVGForQMS = {vg0};
 
     // Default searches that are deactivated 
