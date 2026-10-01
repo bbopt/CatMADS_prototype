@@ -25,7 +25,8 @@ extern const int Ncat;
 extern const int Nint;
 extern const int Ncon;
 extern const int N;
-extern const int Lcat; // total nb of categories 
+extern const int Lcat; // total nb of categories
+extern const std::vector<int> LcatPerVariable;
 extern bool LastSuccessIsQuantitative;
 extern bool LastSuccessIsCategorical;
 extern bool isCatDistanceUpdated;

@@ -22,16 +22,20 @@ const int Nint = 0;
 const int Ncon = 5;
 const int N = Ncat + Nint + Ncon;
 const int Lcat = 12;
+
 const NOMAD::BBOutputTypeList bbOutputTypeListSetup = {
     NOMAD::BBOutputType::OBJ
 };
+
 const bool IsConstrained = false;
+
 
 
 // Global variables
 bool LastSuccessIsQuantitative = false;
 bool LastSuccessIsCategorical = false;
 bool isCatDistanceUpdated = true;
+
 
 
 /*----------------------------------------*/
@@ -46,11 +50,15 @@ public:
         const std::shared_ptr<NOMAD::EvalParameters>& evalParams
     )
         : NOMAD::Evaluator(evalParams, NOMAD::EvalType::BB)
-    {
-    }
+    {}
 
     ~My_Evaluator() {}
 
+    bool eval_x(
+        NOMAD::EvalPoint& x,
+        const NOMAD::Double& hMax,
+        bool& countEval
+    ) const override;
     bool eval_x(
         NOMAD::EvalPoint& x,
         const NOMAD::Double& hMax,
@@ -67,10 +75,16 @@ bool My_Evaluator::eval_x(
     const NOMAD::Double& hMax,
     bool& countEval
 ) const
+bool My_Evaluator::eval_x(
+    NOMAD::EvalPoint& x,
+    const NOMAD::Double& hMax,
+    bool& countEval
+) const
 {
-    (void)hMax; // unused (no constraints handled here)
+    (void)hMax;
 
-    // Expect: Ncat = 3, Nint = 0, Ncon = 5
+    // Expect:
+    // x = [x_cat1, x_cat2, x_cat3, x_con1, ..., x_con5]
     if (x.size() != (Ncat + Nint + Ncon))
     {
         throw NOMAD::Exception(
@@ -78,60 +92,88 @@ bool My_Evaluator::eval_x(
             __LINE__,
             "Dimension mismatch: expected Ncat + Nint + Ncon variables."
         );
+        throw NOMAD::Exception(
+            __FILE__,
+            __LINE__,
+            "Dimension mismatch: expected Ncat + Nint + Ncon variables."
+        );
     }
 
-    // ---- Extract categorical variables (integer encoding) ----
-    // x_cat1: A,B,C -> 0,1,2
-    // x_cat2: D,E   -> 0,1
-    // x_cat3: F,G   -> 0,1
+    // ------------------------------------------------------------
+    // Categorical variables
+    //
+    // x_cat1:
+    //   0 -> A
+    //   1 -> B
+    //   2 -> C
+    //
+    // x_cat2:
+    //   0 -> D
+    //   1 -> E
+    //
+    // x_cat3:
+    //   0 -> F
+    //   1 -> G
+    // ------------------------------------------------------------
+
     const int x_cat1 = static_cast<int>(x[0].todouble());
     const int x_cat2 = static_cast<int>(x[1].todouble());
     const int x_cat3 = static_cast<int>(x[2].todouble());
 
-    // ---- Extract continuous variables x1..x5 ----
+    // ------------------------------------------------------------
+    // Continuous variables x1,...,x5
+    // ------------------------------------------------------------
+
     std::vector<double> xc(Ncon);
+
 
     for (int k = 0; k < Ncon; ++k)
     {
-        xc[k] = x[Ncat + Nint + k].todouble(); // starts at index 3
+        xc[k] = x[Ncat + Nint + k].todouble();
     }
 
-    // ---- s(x^cat) ----
+    // ------------------------------------------------------------
+    // s(x^cat)
     //
-    // First index  : x_cat1 = A,B,C
-    // Second index : x_cat2 = D,E
-    // Third index  : x_cat3 = F,G
-    //
-    // (A,D,F) ->  0.00
-    // (A,D,G) ->  0.20
-    // (A,E,F) -> -0.10
-    // (A,E,G) ->  0.25
-    // (B,D,F) ->  0.50
-    // (B,D,G) -> -0.20
-    // (B,E,F) -> -0.50
-    // (B,E,G) ->  0.80
-    // (C,D,F) ->  0.90
-    // (C,D,G) -> -0.50
-    // (C,E,F) ->  1.00
-    // (C,E,G) ->  1.25
-    static const double S_TABLE[3][2][2] = {
+    // table_s[x_cat1][x_cat2][x_cat3]
+    // ------------------------------------------------------------
+
+    static const double table_s[3][2][2] = {
+
+        // x_cat1 = A
         {
-            { 0.00,  0.20 },
-            {-0.10,  0.25 }
+            { 0.00,  0.20 },   // x_cat2 = D: F, G
+            {-0.10,  0.25 }    // x_cat2 = E: F, G
         },
+
+        // x_cat1 = B
         {
-            { 0.50, -0.20 },
-            {-0.50,  0.80 }
+            { 0.50, -0.20 },   // x_cat2 = D: F, G
+            {-0.50,  0.80 }    // x_cat2 = E: F, G
         },
+
+        // x_cat1 = C
         {
-            { 0.90, -0.50 },
-            { 1.00,  1.25 }
+            { 0.90, -0.50 },   // x_cat2 = D: F, G
+            { 1.00,  1.25 }    // x_cat2 = E: F, G
         }
     };
 
-    const double s = S_TABLE[x_cat1][x_cat2][x_cat3];
+    const double s = table_s[x_cat1][x_cat2][x_cat3];
 
-    // ---- Objective ----
+    // ------------------------------------------------------------
+    // Objective
+    //
+    // f(x) =
+    //
+    // sum_{i=1}^5 [
+    //     5 x_i
+    //     + 0.3 s x_i^4
+    //     + (1-x_i)^2
+    //     + s sin(3 pi x_i + i pi / 5)
+    // ] 2^((i-1)/4)
+    // ------------------------------------------------------------
+
     const double pi = M_PI;
 
     double f = 0.0;
@@ -141,12 +183,20 @@ bool My_Evaluator::eval_x(
         const double xi = xc[i - 1];
 
         const double weight =
-            std::pow(2.0, static_cast<double>(i - 1) / 4.0);
+            std::pow(
+                2.0,
+                static_cast<double>(i - 1) / 4.0
+            );
 
         const double term =
             5.0 * xi
             + 0.3 * s * std::pow(xi, 4)
+            + 0.3 * s * std::pow(xi, 4)
             + std::pow(1.0 - xi, 2)
+            + s * std::sin(
+                3.0 * pi * xi
+                + (static_cast<double>(i) * pi) / 5.0
+            );
             + s * std::sin(
                 3.0 * pi * xi
                 + (static_cast<double>(i) * pi) / 5.0
@@ -155,9 +205,10 @@ bool My_Evaluator::eval_x(
         f += term * weight;
     }
 
-    // ---- Return to NOMAD ----
+    // Return to NOMAD
     NOMAD::Double F(f);
     x.setBBO(F.tostring());
+
     countEval = true;
 
     return true;
@@ -175,15 +226,24 @@ void initAllParams(
     >& myMapDirTypeToVG,
     NOMAD::ListOfVariableGroup& myListFixVGForQMS
 )
+/*----------------------------------------*/
+/*             Parameters                 */
+/*----------------------------------------*/
+void initAllParams(
+    std::shared_ptr<NOMAD::AllParameters> allParams,
+    std::map<
+        NOMAD::DirectionType,
+        NOMAD::ListOfVariableGroup
+    >& myMapDirTypeToVG,
+    NOMAD::ListOfVariableGroup& myListFixVGForQMS
+)
 {
-    // Parameters creation
+    // Dimension
     allParams->setAttributeValue("DIMENSION", N);
+
 
     // Black-box evaluations
     allParams->setAttributeValue("MAX_BB_EVAL", nbEvals);
-
-    // Starting point
-    // allParams->setAttributeValue("X0", NOMAD::Point(N, 0.0));
 
     // LHS
     std::string budgetLHsFormat =
@@ -193,22 +253,43 @@ void initAllParams(
         "LH_SEARCH",
         NOMAD::LHSearchType(budgetLHsFormat.c_str())
     );
+    std::string budgetLHsFormat =
+        std::to_string(nbEvalsLHS) + " 0";
 
-    // Bounds for all variables
+    allParams->setAttributeValue(
+        "LH_SEARCH",
+        NOMAD::LHSearchType(budgetLHsFormat.c_str())
+    );
+
+    // ------------------------------------------------------------
+    // Bounds
+    // ------------------------------------------------------------
+
     auto lb = NOMAD::ArrayOfDouble(N, -6.0);
-    auto ub = NOMAD::ArrayOfDouble(N, 9.0);
+    auto ub = NOMAD::ArrayOfDouble(N,  9.0);
 
-    // Categorical lower bounds
+    // Categorical variables
+    //
+    // cat1 = A,B,C -> 0,1,2
+    // cat2 = D,E   -> 0,1
+    // cat3 = F,G   -> 0,1
+
     lb[0] = 0;
     lb[1] = 0;
     lb[2] = 0;
 
-    // Categorical upper bounds
     ub[0] = 2;
     ub[1] = 1;
     ub[2] = 1;
 
+
     // Continuous lower bounds
+    lb[Ncat + 0] = -9;
+    lb[Ncat + 1] = -7;
+    lb[Ncat + 2] = -10;
+    lb[Ncat + 3] = -8;
+    lb[Ncat + 4] = -6;
+
     lb[Ncat + 0] = -9;
     lb[Ncat + 1] = -7;
     lb[Ncat + 2] = -10;
@@ -222,14 +303,23 @@ void initAllParams(
     ub[Ncat + 3] = 13;
     ub[Ncat + 4] = 15;
 
+    ub[Ncat + 0] = 12;
+    ub[Ncat + 1] = 14;
+    ub[Ncat + 2] = 10;
+    ub[Ncat + 3] = 13;
+    ub[Ncat + 4] = 15;
+
     allParams->setAttributeValue("LOWER_BOUND", lb);
     allParams->setAttributeValue("UPPER_BOUND", ub);
 
-    // Types
+    // ------------------------------------------------------------
+    // Variable types
+    // ------------------------------------------------------------
+
     NOMAD::BBInputTypeList bbinput = {
         NOMAD::BBInputType::INTEGER,
         NOMAD::BBInputType::INTEGER,
-        NOMAD::BBInputType::INTEGER,       // categorical variables
+        NOMAD::BBInputType::INTEGER,
 
         NOMAD::BBInputType::CONTINUOUS,
         NOMAD::BBInputType::CONTINUOUS,
@@ -243,14 +333,17 @@ void initAllParams(
         bbinput
     );
 
+    // ------------------------------------------------------------
     // Variable groups
+    // ------------------------------------------------------------
+
     NOMAD::VariableGroup vg0 = {
         0, 1, 2
-    }; // categorical variables
+    };
 
     NOMAD::VariableGroup vg1 = {
         3, 4, 5, 6, 7
-    }; // quantitative variables
+    };
 
     allParams->setAttributeValue(
         "VARIABLE_GROUP",
@@ -268,19 +361,19 @@ void initAllParams(
         dtList
     );
 
-    // Associate direction types and variable groups
     myMapDirTypeToVG = {
         {dtList[0], {vg0}},
         {dtList[1], {vg1}}
     };
 
-    // Constraints and objective
+    // Objective
     allParams->setAttributeValue(
         "BB_OUTPUT_TYPE",
         bbOutputTypeListSetup
     );
 
-    // Quad model search where categorical variables are fixed
+    // Quad model search:
+    // categorical variables fixed
     allParams->setAttributeValue(
         "QUAD_MODEL_SEARCH",
         true
@@ -288,7 +381,7 @@ void initAllParams(
 
     myListFixVGForQMS = {vg0};
 
-    // Default searches that are deactivated
+    // Default searches deactivated
     allParams->setAttributeValue(
         "NM_SEARCH",
         false
@@ -299,7 +392,7 @@ void initAllParams(
         false
     );
 
-    // Enable the user search method
+    // Enable user search
     allParams->setAttributeValue(
         "USER_SEARCH",
         true
@@ -322,8 +415,24 @@ void initAllParams(
         "DISPLAY_ALL_EVAL",
         true
     );
+    allParams->setAttributeValue(
+        "DISPLAY_DEGREE",
+        2
+    );
 
-    // Fix seed for reproducibility of results
+    allParams->setAttributeValue(
+        "DISPLAY_STATS",
+        NOMAD::ArrayOfString(
+            "bbe ( sol ) obj cons_h"
+        )
+    );
+
+    allParams->setAttributeValue(
+        "DISPLAY_ALL_EVAL",
+        true
+    );
+
+    // Seed
     allParams->setAttributeValue(
         "SEED",
         seedSetup
@@ -334,7 +443,7 @@ void initAllParams(
         true
     );
 
-    // File history for convergence plots and profiles
+    // History
     allParams->setAttributeValue(
         "STATS_FILE",
         NOMAD::ArrayOfString(
@@ -342,7 +451,7 @@ void initAllParams(
         )
     );
 
-    // Parameters validation
+    // Validation
     allParams->checkAndComply();
 }
 
@@ -351,31 +460,35 @@ void initAllParams(
 /*            NOMAD main function           */
 /*------------------------------------------*/
 int main(int argc, char** argv)
+int main(int argc, char** argv)
 {
-    // List of files to clear
     std::vector<std::string> filesToClear = {
         fileCache,
         fileCatDirections,
         fileParams
     };
 
-    // Clear the files at the start
     deleteFiles(filesToClear);
 
     NOMAD::MainStep TheMainStep;
 
-    // Set parameters
+    // Parameters
     auto params =
         std::make_shared<NOMAD::AllParameters>();
 
-    // Map to associate a direction type to a group of variables
     std::map<
         NOMAD::DirectionType,
         NOMAD::ListOfVariableGroup
     > myMapDirTypeToVG;
 
-    // List of fixed variable groups for Quad model search
-    NOMAD::ListOfVariableGroup myListFixVGForQMS;
+    NOMAD::ListOfVariableGroup
+        myListFixVGForQMS;
+
+    initAllParams(
+        params,
+        myMapDirTypeToVG,
+        myListFixVGForQMS
+    );
 
     initAllParams(
         params,
@@ -387,32 +500,39 @@ int main(int argc, char** argv)
 
     // Custom evaluator
     std::shared_ptr<NOMAD::Evaluator> ev(
-        new My_Evaluator(params->getEvalParams())
+        new My_Evaluator(
+            params->getEvalParams()
+        )
     );
 
-    TheMainStep.setEvaluator(std::move(ev));
+    TheMainStep.setEvaluator(
+        std::move(ev)
+    );
 
-    // Main step start initializes Mads
+    // Initialize MADS
     TheMainStep.start();
 
-    // Define new sort function and sort according to that function
+    // Custom ordering
     auto customOrder =
         std::make_shared<CustomOrder>();
 
-    NOMAD::EvcInterface::getEvaluatorControl()
-        ->setUserCompMethod(customOrder);
+    NOMAD::EvcInterface::
+        getEvaluatorControl()->
+        setUserCompMethod(customOrder);
 
-    // Define post-evaluation callback
+    // Post-evaluation callback
     NOMAD::EvalCallbackFunc<
         NOMAD::CallbackType::POST_EVAL_UPDATE
-    > cbPostEvalUpdate = customPostEvalUpdateCB;
+    > cbPostEvalUpdate =
+        customPostEvalUpdateCB;
 
-    NOMAD::EvcInterface::getEvaluatorControl()
-        ->addEvalCallback<
+    NOMAD::EvcInterface::
+        getEvaluatorControl()->
+        addEvalCallback<
             NOMAD::CallbackType::POST_EVAL_UPDATE
         >(cbPostEvalUpdate);
 
-    // Register callback functions
+    // Access MADS
     auto mads =
         std::dynamic_pointer_cast<NOMAD::Mads>(
             TheMainStep.getAlgo(
@@ -429,44 +549,37 @@ int main(int argc, char** argv)
         );
     }
 
-    // Callbacks for search
+    // User search
     mads->addCallback(
         NOMAD::CallbackType::USER_METHOD_SEARCH,
         userSearchMethodCallbackSpeculative
     );
 
-    // mads->addCallback(
-    //     NOMAD::CallbackType::USER_METHOD_SEARCH_2,
-    //     userSearchMethodCallbackGP
-    // );
-
-    // Default quad model search must not consider categorical variables
-    params->getRunParams()
-        ->setListFixVGForQuadModelSearch(
+    // QMS does not modify categorical variables
+    params->getRunParams()->
+        setListFixVGForQuadModelSearch(
             params->getPbParams(),
             myListFixVGForQMS
         );
 
-    // Callback to generate Mads user poll trial points
+    // Categorical poll
     mads->addCallback(
         NOMAD::CallbackType::USER_METHOD_FREE_POLL,
         userPollMethodCallback
     );
 
-    // Associate direction types and variable groups
-    params->getRunParams()
-        ->setMapDirTypeToVG(
+    params->getRunParams()->
+        setMapDirTypeToVG(
             params->getPbParams(),
             myMapDirTypeToVG
         );
 
-    // Set user extended poll method
+    // Extended poll
     std::unique_ptr<NOMAD::ExtendedPollMethod>
         extendedPollMethod =
-            std::make_unique<MyExtendedPollMethod2>(
-                mads,
-                ev
-            );
+            std::make_unique<
+                MyExtendedPollMethod2
+            >(mads, ev);
 
     mads->setExtendedPollMethod(
         std::move(extendedPollMethod)

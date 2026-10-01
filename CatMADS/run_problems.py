@@ -90,14 +90,11 @@ if __name__ == '__main__':
     #            "Shekel_constrained", "Ishigami_constrained"]
 
 
-    #problems = ["Beale_constrained"]
-
-
     # Unconstrained for G-MADS vs CatMADS
     #problems = ["GoldsteinPrice2", "Ishigami", "Hartmann", "Levy", "Camel", "Gamma", "EVD61", "Hal04",
     #            "OET5", "Wong3", "Roustant", "KowalikOsborne", "ThreeHump", "McCormick", "Shekel"]      # 15 pbs
-    problems = ["Ishigami", "Hartmann", "Levy", "Camel", "Gamma", "EVD61",
-                "KowalikOsborne", "ThreeHumps", "McCormick", "Shekel"]
+    #problems = ["Ishigami", "Hartmann", "Levy", "Camel", "Gamma", "EVD61",
+    #            "KowalikOsborne", "ThreeHumps", "McCormick", "Shekel"]
 
     # Constrained for G-MADS vs CatMADS
     #problems = ["CarSideImpact_constrained", "WeldedBeam_constrained", "G06_constrained", "SpeedReducer_constrained",
@@ -106,12 +103,50 @@ if __name__ == '__main__':
     #"Himmelblau_constrained", "ReinforcedConcreteBeam_constrained"]
 
 
+    # Constrained problems for Surrogate-based neighborhood paper
+    problems = [
+        "Beale_constrained",
+        "Branin_constrained",
+        "Bukin6_constrained",
+        "Dembo5_constrained",
+        "EDV2_constrained",
+        "G09_constrained",
+        "GoldsteinPrice_constrained",
+        "Himmelblau_constrained",
+        "HS144_constrained",
+        "Pentagon_constrained",
+        "PressureVessel_constrained",
+        "ReinforcedConcreteBeam_constrained",
+        "Rosenbrock_constrained",
+        "StyblinskiTang_constrained",
+        "Toy_constrained",
+        "Wong2_constrained",
+        "SpeedReducer_constrained",
+        "Spring_constrained",
+        "G07_constrained",
+        "CarSideImpact_constrained", 
+        ## "Dembo7_constrained",               # skip
+        "MAD_constrained",
+        ##"Wong3_constrained",                 # skip
+        "WeldedBeam_constrained",
+        ##  "Three_bar_truss_constrained",     # skip
+        "ThreeHumps_constrained",
+        "McCormick_constrained",
+        "G06_constrained",
+        "Shekel_constrained",
+        "Ishigami_constrained"]
+
+    problems = ["WeldedBeam_constrained", "ThreeHumps_constrained",]
+
+    # todo welded_beam, three_humps
+
+
     # 0) Proper directory with problems
-    problems_build_dir = os.path.join(build_dir, "CatMADS/problems/unconstrained")
+    problems_build_dir = os.path.join(build_dir, "CatMADS/problems/constrained")
 
 
     # 1) Delete/clean build with 
-    #"rm -rf ~/nomad4dev/build" in terminal
+    #"rm -rf ~/CatMADS_prototype/build" in terminal
 
     # 2) Build NOMAD
     build_root_project()

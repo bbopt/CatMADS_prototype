@@ -14,6 +14,9 @@
 #include "Math/RNG.hpp"
 #include "GMADS.hpp"
 
+#include <random>
+#include <numeric>
+#include <algorithm>
 
 // Setup of the problem
 const int Ncat=2;
@@ -21,6 +24,7 @@ const int Nint=1;
 const int Ncon=4;
 const int N=Ncat+Nint+Ncon;
 const int Lcat=100;
+const std::vector<int> LcatPerVariable = {10, 10};
 const NOMAD::BBOutputTypeList bbOutputTypeListSetup = {NOMAD::BBOutputType::OBJ};
 const bool IsConstrained = false;
 
@@ -63,9 +67,31 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                                "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
     }
 
-    // ---- Categorical variables (encoded as 0..9 for A..J) ----
-    const int x_cat1 = static_cast<int>(x[0].todouble()); // x1^{cat}
-    const int x_cat2 = static_cast<int>(x[1].todouble()); // x2^{cat}
+    // Generate once, a random label assignement for the categorical variables
+    static const std::vector<std::vector<int>> catEncoding = []()
+    {
+        
+        // Use the seedSetup
+        std::mt19937 rng(seedSetup);
+        std::vector<std::vector<int>> encoding(Ncat);
+
+        for (int i = 0; i < Ncat; ++i)
+        {
+            encoding[i].resize(LcatPerVariable[i]);
+            std::iota(encoding[i].begin(), encoding[i].end(), 0);
+            std::shuffle(encoding[i].begin(), encoding[i].end(), rng);
+        }
+
+        return encoding;
+    }();
+
+
+    // ---- Categorical variables with fixed random encoding ----
+    const int raw_cat1 = static_cast<int>(x[0].todouble());
+    const int raw_cat2 = static_cast<int>(x[1].todouble());
+
+    const int x_cat1 = catEncoding[0][raw_cat1]; // encoded x1^{cat}
+    const int x_cat2 = catEncoding[1][raw_cat2]; // encoded x2^{cat}
 
     // ---- Integer variable ----
     const int x1_int = static_cast<int>(x[2].todouble());

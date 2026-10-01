@@ -14,20 +14,16 @@
 #include "Math/RNG.hpp"
 #include "GMADS.hpp"
 
-#include <random>
-#include <numeric>
-#include <algorithm>
-
 
 // Setup of the problem
 const int Ncat=1;
-const int Nint=0;
-const int Ncon=4;
+const int Nint=2;
+const int Ncon=2;
 const int N=Ncat+Nint+Ncon;
-const int Lcat=61;
-const std::vector<int> LcatPerVariable = {61};
-const NOMAD::BBOutputTypeList bbOutputTypeListSetup = {NOMAD::BBOutputType::OBJ};
-const bool IsConstrained = false;
+const int Lcat=8;
+const NOMAD::BBOutputTypeList bbOutputTypeListSetup = {NOMAD::BBOutputType::OBJ,
+                                 NOMAD::BBOutputType::PB, NOMAD::BBOutputType::PB, NOMAD::BBOutputType::PB};
+const bool IsConstrained = true;
 
 // Global variables
 bool LastSuccessIsQuantitative = false;
@@ -59,120 +55,54 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
                           const NOMAD::Double &hMax,
                           bool &countEval) const
 {
-    (void)hMax; // unused (no constraints handled here)
+    // Extract variables
+    int x_cat = static_cast<int>(x[0].todouble()); // Categorical variable
+    double x_int1 = 0.0625 * static_cast<int>(x[1].todouble());
+    double x_int2 = 0.0625 * static_cast<int>(x[2].todouble());
+    double x_con1 = x[3].todouble();
+    double x_con2 = x[4].todouble();
 
-    // Expect: Ncat = 1, Nint = 0, Ncon = 4
-    if (x.size() != (Ncat + Nint + Ncon))
-    {
-        throw NOMAD::Exception(__FILE__, __LINE__,
-                               "Dimension mismatch: expected Ncat + Nint + Ncon variables.");
-    }
-
-
-    // Generate once, a random label assignement for the categorical variables
-    static const std::vector<std::vector<int>> catEncoding = []()
-    {
-        
-        // Use the seedSetup
-        std::mt19937 rng(seedSetup);
-        std::vector<std::vector<int>> encoding(Ncat);
-
-        for (int i = 0; i < Ncat; ++i)
-        {
-            encoding[i].resize(LcatPerVariable[i]);
-            std::iota(encoding[i].begin(), encoding[i].end(), 0);
-            std::shuffle(encoding[i].begin(), encoding[i].end(), rng);
+    // Helper function for p
+    auto compute_p = [&](int x_cat, double x_con2) -> double {
+        switch (x_cat) {
+            case 0: return 20 + 0.8 * x_con2 + 15 * std::sin(0.02 * x_con2);
+            case 1: return 50 + 0.85 * x_con2 + 18 * std::sin(0.025 * x_con2 + 0.3);
+            case 2: return 10 + 0.75 * x_con2 + 12 * std::sin(0.018 * x_con2 - 0.4);
+            case 3: return 40 + 0.82 * x_con2 + 20 * std::sin(0.022 * x_con2 + 0.5);
+            case 4: return 200 - 0.8 * x_con2 - 15 * std::sin(0.02 * x_con2);
+            case 5: return 160 - 0.85 * x_con2 - 18 * std::sin(0.025 * x_con2 + 0.3);
+            case 6: return 220 - 0.75 * x_con2 - 12 * std::sin(0.018 * x_con2 - 0.4);
+            case 7: return 180 - 0.82 * x_con2 - 20 * std::sin(0.022 * x_con2 + 0.5);
+            default: throw std::invalid_argument("Invalid categorical variable value.");
         }
-
-        return encoding;
-    }();
-
-    int raw_cat = static_cast<int>(std::llround(x[0].todouble()));
-
-    if (raw_cat < 0 || raw_cat >= LcatPerVariable[0])
-    {
-        // Penalize out-of-range categorical values rather than crashing
-        x.setBBO(NOMAD::Double(1e20).tostring());
-        countEval = true;
-        return true;
-    }
-
-    // Apply fixed random encoding
-    const int x_cat = catEncoding[0][raw_cat];
-
-    // ---- Extract continuous variables (4 variables) ----
-    const double x1 = x[1].todouble();
-    const double x2 = x[2].todouble();
-    const double x3 = x[3].todouble();
-    const double x4 = x[4].todouble();
-
-    // ---- s(x^{cat}) lookup table for categories "1".. "61" ----
-    // Index 0 corresponds to "1", index 60 corresponds to "61".
-    static const double s_table[61] = {
-        1.00, 1.26, 1.54, 1.84, 2.16, 2.50, 2.86,
-        1.12, 1.15, 1.20, 1.25, 1.30, 1.35, 1.40,
-        3.00, 3.26, 3.54, 3.84, 4.16, 4.50, 4.86, 5.24, 5.64, 6.06, 6.50, 6.96, 7.44, 7.94,
-        6.76, 7.20, 7.66,
-        15.00, 14.85, 14.70, 14.55,
-        12.00, 11.85, 11.70, 11.55, 11.40, 11.25, 11.10, 10.95, 10.80, 10.65, 10.50, 10.35, 10.20, 10.05,
-        12.15, 11.05, 9.95, 8.85, 7.75, 6.65, 5.55, 4.45, 3.35, 2.25, 1.15, 1.00
     };
 
-    const double s = s_table[x_cat];
+    double p_val = compute_p(x_cat, x_con2);
 
-    // ---- Stable objective constants ----
-    constexpr double eps = 1e-2;   // \varepsilon
-    constexpr double delta = 1e-6; // \delta
+    // Objective function
+    double f = 0.6224 * x_int1 * x_con1 * p_val +
+               1.7781 * x_int2 * std::pow(p_val, 2) +
+               3.1661 * std::pow(x_int1, 2) * x_con1 +
+               19.84 * std::pow(x_int1, 2) * p_val;
 
-    // ---- Compute objective (stable version) ----
-    // z = x3*s + x4
-    // inner = s + x2 + z/(z^2 + eps^2)
-    // base = sqrt(inner^2 + delta^2)  (strictly positive)
-    // f = x1 * ( base^(s+1/2) / (s+1)^(s+1/2) ) - 1
-    const double z = x3 * s + x4;
-    const double inner = s + x2 + (z / (z * z + eps * eps));
-    const double base = std::sqrt(inner * inner + delta * delta);
+    // Constraints
+    double g1 = -x_int1 + 0.0193 * p_val;
+    double g2 = -x_int2 + 0.00954 * p_val;
+    double g3 = -M_PI * x_con1 * std::pow(p_val, 2) - (4 * M_PI / 3) * std::pow(p_val, 3) + 1296000;
 
-    const double exponent = s + 0.5;
+    // Convert constraints and objective function to NOMAD format
+    NOMAD::Double F(f);
+    NOMAD::Double G1(g1);
+    NOMAD::Double G2(g2);
+    NOMAD::Double G3(g3);
 
-    // Compute ratio in log-space to reduce overflow risk:
-    // (base/(s+1))^exponent = exp(exponent * log(base/(s+1)))
-    const double ratio = base / (s + 1.0);
+    // Assign constraints and objective function
+    x.setBBO(F.tostring() + " " + G1.tostring() + " " + G2.tostring() + " " + G3.tostring());
 
-    // ratio is > 0 by construction, but keep a guard for numerical weirdness.
-    if (!(ratio > 0.0) || !std::isfinite(ratio) || !std::isfinite(exponent))
-    {
-        x.setBBO(NOMAD::Double(1e20).tostring());
-        countEval = true;
-        return true;
-    }
-
-    double theta = exponent * std::log(ratio);
-
-    // Optional (recommended): clamp to avoid exp overflow.
-    // exp(700) is near the limit of double.
-    if (theta > 700.0) theta = 700.0;
-    if (theta < -700.0) theta = -700.0;
-
-    const double power_term = std::exp(theta);
-
-    const double f = x1 * power_term - 1.0;
-
-    // Final safety guard
-    if (!std::isfinite(f))
-    {
-        x.setBBO(NOMAD::Double(1e20).tostring());
-        countEval = true;
-        return true;
-    }
-
-    // ---- Return to NOMAD ----
-    x.setBBO(NOMAD::Double(f).tostring());
+    // Mark evaluation as successful
     countEval = true;
     return true;
-}
-
-
+};
 
 void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams)
 {
@@ -188,33 +118,45 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams)
     allParams->setAttributeValue("LH_SEARCH", NOMAD::LHSearchType(budgetLHsFormat.c_str()));
 
     // Bounds for all variables except the first group (categorical variable)
-    auto lb = NOMAD::ArrayOfDouble(N, -1.0);
-    auto ub = NOMAD::ArrayOfDouble(N,  1.0);
+    auto lb = NOMAD::ArrayOfDouble(N, 10);
+    auto ub = NOMAD::ArrayOfDouble(N, 200);
     // Categorical lower bounds
     lb[0] = 0; 
     // Categorical upper bounds
-    ub[0] = 60; 
+    ub[0] = 7; 
+    // Integer lower bounds
+    lb[Ncat+0] = 1; 
+    lb[Ncat+1] = 1;
+    // Integer upper bounds
+    ub[Ncat+0] = 99; 
+    ub[Ncat+1] = 99;
     allParams->setAttributeValue("LOWER_BOUND", lb);
     allParams->setAttributeValue("UPPER_BOUND", ub);
     
     // Types
     NOMAD::BBInputTypeList bbinput = {
     NOMAD::BBInputType::INTEGER,  // categorical variables
-    NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS};
+    NOMAD::BBInputType::INTEGER, NOMAD::BBInputType::INTEGER,  // integer variables
+    NOMAD::BBInputType::CONTINUOUS, NOMAD::BBInputType::CONTINUOUS};
     allParams->setAttributeValue("BB_INPUT_TYPE", bbinput);
 
     // Variable group
     //NOMAD::VariableGroup vg0 = {0}; // categorical variables
-    //NOMAD::VariableGroup vg1 = {1,2,3,4}; // quantitative variables
+    //NOMAD::VariableGroup vg1 = {1,2, 3,4}; // quantitative variables
     //allParams->setAttributeValue("VARIABLE_GROUP", NOMAD::ListOfVariableGroup({vg0,vg1}));
     
-    // Poll in two subpolls
+    // Primary poll in two subpolls
     //NOMAD::DirectionTypeList dtList = {NOMAD::DirectionType::USER_FREE_POLL, NOMAD::DirectionType::ORTHO_2N};
     //allParams->setAttributeValue("DIRECTION_TYPE",dtList);
     
+    // Secondary poll in two subpolls
+    //NOMAD::DirectionTypeList dtListSec = {NOMAD::DirectionType::USER_FREE_POLL, NOMAD::DirectionType::DOUBLE};
+    //allParams->setAttributeValue("DIRECTION_TYPE_SECONDARY_POLL",dtListSec);
+
     // Set the map of direction types and variable group. This is passed to Mads in the main function
-    //myMapDirTypeToVG = {{dtList[0],{vg0}},{dtList[1],{vg1}}};
-    
+    //myMapDirTypeToVG = {{dtList[0],{vg0}},{dtList[1],{vg1}}}; // Before constraints
+    //myMapDirTypeToVG = {{dtList[0],{vg0}},{dtList[1],{vg1}},{dtListSec[1],{vg1}}};
+
     // Constraints and objective
     allParams->setAttributeValue("BB_OUTPUT_TYPE", bbOutputTypeListSetup);
 
@@ -239,8 +181,7 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams)
     allParams->setAttributeValue("RNG_ALT_SEEDING", true);
 
     // File history for convergence plots and profiles
-    // TODO: here file history
-    allParams->setAttributeValue("STATS_FILE", NOMAD::ArrayOfString("gamma_gmads.txt bbe sol obj cons_h"));
+    allParams->setAttributeValue("STATS_FILE", NOMAD::ArrayOfString("pressurevessel_constrained_gmads.txt bbe sol obj cons_h"));
 
     // Parameters validation
     allParams->checkAndComply();
@@ -332,4 +273,3 @@ int main ( int argc , char ** argv )
 
     return 0;
 }
-

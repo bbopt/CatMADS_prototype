@@ -152,8 +152,9 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     allParams->setAttributeValue("LH_SEARCH", NOMAD::LHSearchType(budgetLHsFormat.c_str()));
 
     // Bounds for all variables except the first group (categorical variable)
+    // Continuous variables x1,...,x7 are in [0,1], as in Cat-Suite.
     auto lb = NOMAD::ArrayOfDouble(N, 0.0);
-    auto ub = NOMAD::ArrayOfDouble(N, 1.5);
+    auto ub = NOMAD::ArrayOfDouble(N, 1.0);
     // Categorical lower bounds
     lb[0] = 0; 
     lb[1] = 0;

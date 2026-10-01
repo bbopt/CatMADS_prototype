@@ -90,7 +90,30 @@ if __name__ == '__main__':
     #            "Shekel_constrained", "Ishigami_constrained"]
 
 
-    #problems = ["Beale_constrained"]
+    
+
+    # ----------------------------------------------------------------------------------------------------------- #
+    problems = ["Beale_constrained_GMADS", "Branin_constrained_GMADS", "Bukin6_constrained_GMADS", 
+    "Dembo5_constrained_GMADS", "EDV2_constrained_GMADS", "G09_constrained_GMADS", "GoldsteinPrice_constrained_GMADS",
+    "Himmelblau_constrained_GMADS", "HS144_constrained_GMADS", "Pentagon_constrained_GMADS",
+    "PressureVessel_constrained_GMADS", "ReinforcedConcreteBeam_constrained_GMADS", "Rosenbrock_constrained_GMADS",
+    "StyblinskiTang_constrained_GMADS", "Toy_constrained_GMADS", "Wong2_constrained_GMADS",
+    "SpeedReducer_constrained_GMADS", "Spring_constrained_GMADS", "G07_constrained_GMADS",
+    "CarSideImpact_constrained_GMADS", "Dembo7_constrained_GMADS", "MAD_constrained_GMADS",
+    "Wong3_constrained_GMADS", "WeldedBeam_constrained_GMADS", "ThreeBarTruss_constrained_GMADS",
+    "ThreeHumps_constrained_GMADS", "McCormick_constrained_GMADS", "G06_constrained_GMADS",
+    "Shekel_constrained_GMADS", "Ishigami_constrained_GMADS"]
+
+
+    # All constrained pbs
+    #problems = ["CarSideImpact_constrained_GMADS", "WeldedBeam_constrained_GMADS", "G06_constrained_GMADS", "SpeedReducer_constrained_GMADS",
+    #            "G07_constrained_GMADS", "McCormick_constrained_GMADS", "Ishigami_constrained_GMADS",
+    #            "ThreeHumps_constrained_GMADS", "Shekel_constrained_GMADS", "Spring_constrained_GMADS"]
+
+    # Constrained for G-MADS vs CatMADS
+    #problems = ["CarSideImpact_constrained_GMADS", "WeldedBeam_constrained_GMADS", "G06_constrained_GMADS", "SpeedReducer_constrained_GMADS",
+    #            "G07_constrained_GMADS", "McCormick_constrained_GMADS", "Ishigami_constrained_GMADS",
+    #            "ThreeHumps_constrained_GMADS", "Shekel_constrained_GMADS", "Spring_constrained_GMADS"]
 
 
     # Unconstrained for G-MADS vs CatMADS
@@ -99,17 +122,6 @@ if __name__ == '__main__':
     #problems = ["Ishigami_GMADS", "Hartmann_GMADS", "Levy_GMADS", "Camel_GMADS", "Gamma_GMADS", "EVD61_GMADS",
     #            "KowalikOsborne_GMADS", "ThreeHumps_GMADS", "McCormick_GMADS", "Shekel_GMADS"]
 
-
-
-
-
-
-    # Constrained for G-MADS vs CatMADS
-    problems = ["CarSideImpact_constrained_GMADS", "WeldedBeam_constrained_GMADS", "G06_constrained_GMADS", "SpeedReducer_constrained_GMADS",
-                "G07_constrained_GMADS", "McCormick_constrained_GMADS", "Ishigami_constrained_GMADS",
-                "ThreeHumps_constrained_GMADS", "Shekel_constrained_GMADS", "Spring_constrained_GMADS"]
-
-
     # All unconstrained pbs
     #problems = ["AckleyHard_GMADS", "Beale_GMADS", "Branin_GMADS",  "Bukin6_GMADS", "EVD2_GMADS", "GoldsteinPrice1_GMADS",
     # "GoldsteinPrice2_GMADS", "HS78_GMADS", "Rastragin_GMADS", "RosenbrockMixed_GMADS", "RosenSuzuki_GMADS",
@@ -117,7 +129,6 @@ if __name__ == '__main__':
     # "Camel_GMADS", "EVD61_GMADS", "Gamma_GMADS", "Hal04_GMADS", "Hartmann_GMADS", "Ishigami_GMADS",
     # "KowalikOsborne_GMADS", "Levy_GMADS", "McCormick_GMADS", "OET5_GMADS", "Roustant_GMADS", "Shekel_GMADS",
     # "ThreeHumps_GMADS", "Wong3_GMADS"]
-
 
 
     # 0) Proper directory with problems

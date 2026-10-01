@@ -81,8 +81,25 @@ bool My_Evaluator::eval_x(NOMAD::EvalPoint &x,
     const double x5 = x[8].todouble();
 
     // ---- delta = round((x1_int + x2_int)/10) in {-2,-1,0,1,2} ----
+    // Match NumPy's round convention used by NomadBBO: ties (.5) go to the nearest even integer.
     const double ratio = (static_cast<double>(x1_int) + static_cast<double>(x2_int)) / 10.0;
-    const int delta = static_cast<int>(std::round(ratio));
+
+    auto round_ties_to_even = [](double v) -> int
+    {
+        const double lo_d = std::floor(v);
+        const double frac = v - lo_d;
+        const long long lo = static_cast<long long>(lo_d);
+
+        if (frac < 0.5)
+            return static_cast<int>(lo);
+        if (frac > 0.5)
+            return static_cast<int>(lo + 1);
+
+        // Exact half: choose the even integer.
+        return static_cast<int>((lo % 2 == 0) ? lo : lo + 1);
+    };
+
+    const int delta = round_ties_to_even(ratio);
 
     // ---- b(x^cat) ----
     double b = 0.0;
@@ -168,13 +185,13 @@ void initAllParams( std::shared_ptr<NOMAD::AllParameters> allParams, std::map<NO
     // Categorical upper bounds
     ub[0] = 9; 
     // Integer lower bounds
-    lb[Ncat+0] = 1;
-    lb[Ncat+1] = 1; 
-    lb[Ncat+2] = 1; 
+    lb[Ncat+0] = -10;
+    lb[Ncat+1] = -10; 
+    lb[Ncat+2] = -10; 
     // Integer upper bounds
-    ub[Ncat+0] = 20;
-    ub[Ncat+1] = 20;
-    ub[Ncat+2] = 20;
+    ub[Ncat+0] = 10;
+    ub[Ncat+1] = 10;
+    ub[Ncat+2] = 10;
     // Continuous lower bounds
     lb[Ncat+Nint+0] = 0;
     // Continuous upper bounds

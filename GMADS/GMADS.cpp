@@ -22,7 +22,8 @@ const int nbEvalsPerVariable=250; //250
 const int nbEvals = N*nbEvalsPerVariable; // N is initialized in a problem specific folder
 const int nbEvalsLHS=static_cast<int>(nbEvals*0.2); //0.2 for GPCatMADS 
 int nbCatNeighbors = std::max(2, static_cast<int>(std::sqrt(Lcat)));
-const int seedSetup = 1; 
+const int seedSetup = 11; 
+
 
 // Paths
 std::string fileCache = basePath + "readwrite_files/cachePts.txt";
