@@ -315,8 +315,8 @@ int main ( int argc , char ** argv )
     params->getRunParams()->setMapDirTypeToVG(params->getPbParams(), myMapDirTypeToVG);
     
     // Set user extended poll method
-    //std::unique_ptr<NOMAD::ExtendedPollMethod> extendedPollMethod = std::make_unique<MyExtendedPollMethod2>(mads, ev);
-    //mads->setExtendedPollMethod(std::move(extendedPollMethod));
+    std::unique_ptr<NOMAD::ExtendedPollMethod> extendedPollMethod = std::make_unique<MyExtendedPollMethod2>(mads, ev);
+    mads->setExtendedPollMethod(std::move(extendedPollMethod));
 
     TheMainStep.run();
     TheMainStep.end();
