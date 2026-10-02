@@ -130,15 +130,11 @@ if __name__ == '__main__':
         ##"Wong3_constrained",                 # skip
         "WeldedBeam_constrained",
         ##  "Three_bar_truss_constrained",     # skip
-        "ThreeHumps_constrained",
+        "ThreeHumps_constrained",   
         "McCormick_constrained",
         "G06_constrained",
         "Shekel_constrained",
         "Ishigami_constrained"]
-
-    problems = ["WeldedBeam_constrained", "ThreeHumps_constrained",]
-
-    # todo welded_beam, three_humps
 
 
     # 0) Proper directory with problems
