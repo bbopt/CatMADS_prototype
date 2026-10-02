@@ -433,7 +433,7 @@ void initAllParams(
 
 
     // Quad search where categorical variables are fixed
-    allParams->setAttributeValue("QUAD_MODEL_SEARCH", false);
+    allParams->setAttributeValue("QUAD_MODEL_SEARCH", true);
 
     myListFixVGForQMS = {
         vg0
